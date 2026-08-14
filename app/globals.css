@@ -60,6 +60,7 @@ body {
   background-color: var(--color-char);
   color: var(--color-paper);
   font-family: var(--font-sans);
+  overflow-x: clip; /* stop stray transforms causing horizontal scroll (keeps sticky) */
 }
 
 ::selection {

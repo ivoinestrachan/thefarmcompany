@@ -39,7 +39,7 @@ function useSegmentGeometry(radius: number, half: number) {
       new THREE.Vector2(radius * 0.55, -half),
       new THREE.Vector2(0.05, -half * 0.5),
     ];
-    const g = new THREE.LatheGeometry(pts, 64);
+    const g = new THREE.LatheGeometry(pts, 48);
     g.computeVertexNormals();
     return g;
   }, [radius, half]);
@@ -71,7 +71,7 @@ function WormModel({
     // assemble on load: rings fly in from spread-out to seated over ~1.6s
     const assemble = 1 - smooth(born.current, 0.1, 1.7); // 1 → 0
     // scroll explodes them apart during the anatomy beat, then reseats them
-    const explode = smooth(p, 0.46, 0.54) * (1 - smooth(p, 0.66, 0.73));
+    const explode = smooth(p, 0.45, 0.58) * (1 - smooth(p, 0.65, 0.74));
     const separation = assemble * 2.6 + explode * 2.2;
     const crawl = 1 - explode; // no peristalsis while it's an exploded diagram
 
@@ -88,10 +88,6 @@ function WormModel({
         // a bulge that rolls down the body (fatten radially on the crest)
         const bulge = 1 + Math.max(0, wave) * 0.18 * crawl;
         child.scale.set(1, bulge, bulge);
-        const m = child as THREE.Mesh;
-        if (m.material) {
-          (m.material as THREE.Material).opacity = Math.min(1, 1 - assemble * 0.9);
-        }
       });
     }
 
@@ -132,19 +128,12 @@ function WormModel({
               rotation={[0, 0, Math.PI / 2]}
               castShadow
             >
-              <meshPhysicalMaterial
-                color="#f2f1ec"
-                roughness={0.3}
-                metalness={0}
-                transmission={0.9}
-                thickness={1.0}
-                ior={1.3}
-                attenuationColor="#e9e6dd"
-                attenuationDistance={3.4}
-                clearcoat={0.5}
-                clearcoatRoughness={0.4}
-                transparent
-                opacity={1}
+              {/* opaque white — no transmission, so the explode stays smooth */}
+              <meshStandardMaterial
+                color="#f4f2ec"
+                roughness={0.4}
+                metalness={0.02}
+                envMapIntensity={0.9}
               />
             </mesh>
           );
@@ -168,7 +157,7 @@ export default function WormScene({
 }) {
   return (
     <Canvas
-      dpr={[1, 2]}
+      dpr={[1, 1.75]}
       camera={{ position: [0, 0.4, 7.2], fov: 40 }}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ background: "transparent" }}

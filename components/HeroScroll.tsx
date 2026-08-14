@@ -74,9 +74,17 @@ export default function HeroScroll() {
       const el = section.current;
       if (el) {
         const rect = el.getBoundingClientRect();
-        const dist = rect.height - window.innerHeight;
+        const vh = window.innerHeight;
+        const dist = rect.height - vh;
         const p = dist > 0 ? Math.min(1, Math.max(0, -rect.top / dist)) : 0;
         progressRef.current = p;
+
+        // fade the hero in as it scrolls up into view — crossfades with the
+        // intro dissolving out, so entering the section feels like a transition
+        if (stage.current) {
+          const entry = Math.min(1, Math.max(0, 1 - rect.top / (vh * 0.75)));
+          stage.current.style.opacity = `${smooth(entry, 0, 1)}`;
+        }
 
         const introOut = smooth(p, 0.05, 0.14);
         if (intro.current) {
@@ -144,7 +152,7 @@ export default function HeroScroll() {
   };
 
   return (
-    <section ref={section} id="top" className="relative h-[420vh]">
+    <section ref={section} id="hero" className="relative h-[420vh]">
       <div ref={stage} className="sticky top-0 flex h-screen items-center overflow-hidden bg-char">
         <div className="grid-dot pointer-events-none absolute inset-0 opacity-40" />
         <Burrow />
@@ -168,9 +176,9 @@ export default function HeroScroll() {
               <SplitLine text="kill weeds." accent />
             </h1>
             <p className="hero-sub mt-6 max-w-sm text-sm leading-relaxed text-fog" data-anim style={{ opacity: 0 }}>
-              Small robots that pull weeds out of the ground instead of spraying
-              them. They loosen and feed the soil the way earthworms do, and send
-              you live readings from every plant and every acre.
+              Small robots that eat the weeds instead of spraying them. They
+              loosen and feed the soil the way earthworms do, and send you live
+              readings from every plant and every acre.
             </p>
             <div className="hero-cta mt-7 flex flex-wrap items-center gap-4" data-anim style={{ opacity: 0 }}>
               <a href="#contact" className="rounded-md bg-signal px-6 py-3 font-mono text-sm font-700 text-ink transition-opacity hover:opacity-90">
@@ -209,9 +217,9 @@ export default function HeroScroll() {
         </div>
 
         {/* timeline scrubber */}
-        <div className="pointer-events-none absolute bottom-8 right-6 flex items-center gap-3 lg:right-10">
+        <div className="pointer-events-none absolute bottom-8 right-4 flex items-center gap-2 sm:gap-3 lg:right-10">
           <span ref={scrubPct} className="font-mono text-[11px] text-fog">00%</span>
-          <div className="relative h-3 w-40 overflow-hidden rounded-full border hairline bg-char2 sm:w-56">
+          <div className="relative h-3 w-24 overflow-hidden rounded-full border hairline bg-char2 sm:w-56">
             <div className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(246,244,242,0.5) 0 1px, transparent 1px 7px)" }} />
             <div ref={scrubFill} className="absolute inset-y-0 left-0 w-0 bg-signal/25" />
             <div ref={scrubDot} className="absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal" style={{ left: "0%", boxShadow: "0 0 8px 0 rgba(246,244,242,0.55)" }} />
@@ -351,14 +359,6 @@ function Burrow() {
       {/* darker ground above and below, leaving a lit channel for the worm */}
       <div className="absolute inset-x-0 top-0 h-[34%] bg-gradient-to-b from-black/50 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-[34%] bg-gradient-to-t from-black/50 to-transparent" />
-      {/* soil strata lines */}
-      <div
-        className="absolute inset-0 opacity-70"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, transparent 0 53px, rgba(246,244,242,0.045) 53px 54px)",
-        }}
-      />
       {/* loose soil drifting through the channel */}
       {MOTES.map((m, i) => (
         <span
