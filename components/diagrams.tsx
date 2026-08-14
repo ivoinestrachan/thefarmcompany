@@ -1,58 +1,243 @@
 /* Custom inline-SVG diagrams — no external assets, crisp at any size. */
 
-export function WormDiagram({ className = "" }: { className?: string }) {
+/* The regenerative loop as an animated cycle of four stages. */
+export function LoopDiagram({ className = "" }: { className?: string }) {
+  const cx = 180;
+  const cy = 180;
+  const r = 118;
+
+  const nodes = [
+    { key: "Kill weeds", sub: "Grazer", angle: -90, color: "#86c46b" },
+    { key: "Aerate", sub: "Tiller", angle: 0, color: "#4a8f5b" },
+    { key: "Enrich", sub: "Castings", angle: 90, color: "#86c46b" },
+    { key: "Sense", sub: "Scout", angle: 180, color: "#4a8f5b" },
+  ];
+
+  const pt = (angle: number, radius = r) => {
+    const a = (angle * Math.PI) / 180;
+    return [cx + Math.cos(a) * radius, cy + Math.sin(a) * radius] as const;
+  };
+
   return (
     <svg
-      viewBox="0 0 420 260"
+      viewBox="0 0 360 360"
       className={className}
       fill="none"
       role="img"
-      aria-label="Earthworm aerating and enriching soil"
+      aria-label="The regenerative loop: kill weeds, aerate, enrich, sense — repeating continuously"
     >
-      <path
-        d="M0 60 H420"
-        className="stroke-ink/15"
-        strokeWidth="1"
-        strokeDasharray="2 5"
-      />
-      <path
-        d="M70 60 C 90 120, 150 110, 170 160 S 250 210, 300 170 S 360 120, 360 180"
-        className="stroke-loam/40"
-        strokeWidth="16"
+      <defs>
+        <linearGradient id="loopRing" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#86c46b" />
+          <stop offset="1" stopColor="#2f5d3a" />
+        </linearGradient>
+      </defs>
+
+      {/* base ring */}
+      <circle cx={cx} cy={cy} r={r} stroke="#f5f4f0" strokeOpacity="0.12" strokeWidth="1.5" />
+
+      {/* animated progress arc travelling round the loop */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        stroke="url(#loopRing)"
+        strokeWidth="2.5"
         strokeLinecap="round"
-      />
-      <path
-        d="M70 60 C 90 120, 150 110, 170 160 S 250 210, 300 170"
-        className="stroke-moss"
-        strokeWidth="11"
-        strokeLinecap="round"
-      />
-      {[0.12, 0.24, 0.36, 0.48, 0.6, 0.72].map((t) => (
-        <circle
-          key={t}
-          r="1.6"
-          className="fill-paper"
-          cx={70 + t * 230}
-          cy={60 + Math.sin(t * 6) * 40 + t * 90}
+        strokeDasharray="150 591"
+        transform={`rotate(-90 ${cx} ${cy})`}
+      >
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          from={`-90 ${cx} ${cy}`}
+          to={`270 ${cx} ${cy}`}
+          dur="7s"
+          repeatCount="indefinite"
+        />
+      </circle>
+
+      {/* directional arrowheads between nodes */}
+      {[-45, 45, 135, 225].map((a) => {
+        const [x, y] = pt(a);
+        return (
+          <path
+            key={a}
+            d="M-4 -4 L4 0 L-4 4"
+            transform={`translate(${x} ${y}) rotate(${a + 90})`}
+            stroke="#f5f4f0"
+            strokeOpacity="0.3"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        );
+      })}
+
+      {/* centre label */}
+      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fill="#86c46b" letterSpacing="0.18em">
+        LIVING
+      </text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fontSize="15" fill="#f5f4f0" fillOpacity="0.85">
+        soil loop
+      </text>
+
+      {/* nodes */}
+      {nodes.map((n) => {
+        const [x, y] = pt(n.angle);
+        const labelLeft = n.angle === 180;
+        const labelRight = n.angle === 0;
+        const tx = labelRight ? x + 16 : labelLeft ? x - 16 : x;
+        const anchor = labelRight ? "start" : labelLeft ? "end" : "middle";
+        const ty = n.angle === -90 ? y - 18 : n.angle === 90 ? y + 26 : y - 4;
+        return (
+          <g key={n.key}>
+            <circle cx={x} cy={y} r="9" fill="#0a0a0a" stroke={n.color} strokeWidth="2" />
+            <circle cx={x} cy={y} r="3" fill={n.color} />
+            <text x={anchor === "middle" ? x : tx} y={ty} textAnchor={anchor} fontSize="12.5" fill="#f5f4f0" fillOpacity="0.9">
+              {n.key}
+            </text>
+            <text
+              x={anchor === "middle" ? x : tx}
+              y={ty + 14}
+              textAnchor={anchor}
+              fontSize="10"
+              fill={n.color}
+            >
+              {n.sub}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+export function WormDiagram({ className = "" }: { className?: string }) {
+  // The worm's centre-line path, reused for the body, segment rings and the
+  // travelling particle so everything stays perfectly aligned.
+  const spine =
+    "M96 66 C 150 78, 138 128, 176 150 C 214 172, 262 156, 276 196 C 288 230, 250 256, 268 300";
+
+  // Sample points along an approximate of the spine for segment ticks.
+  const segments = Array.from({ length: 16 }).map((_, i) => {
+    const t = i / 15;
+    const x = 96 + Math.sin(t * 3.1) * 96 + t * 70;
+    const y = 66 + t * 234;
+    const a = Math.cos(t * 3.1) * 0.9;
+    return { x, y, a };
+  });
+
+  return (
+    <svg
+      viewBox="0 0 360 340"
+      className={className}
+      fill="none"
+      role="img"
+      aria-label="Earthworm burrowing: intake at the surface, aeration channels, and nutrient-rich castings enriching the soil"
+    >
+      <defs>
+        <linearGradient id="wormBody" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#e0b4a6" />
+          <stop offset="0.55" stopColor="#c48472" />
+          <stop offset="1" stopColor="#9c5f4d" />
+        </linearGradient>
+        <radialGradient id="wormGlow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stopColor="#86c46b" stopOpacity="0.5" />
+          <stop offset="1" stopColor="#86c46b" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+
+      {/* surface line + grass tufts */}
+      <path d="M20 66 H340" stroke="#f5f4f0" strokeOpacity="0.18" strokeWidth="1" strokeDasharray="1 6" strokeLinecap="round" />
+      {[36, 52, 300, 320].map((x) => (
+        <g key={x} stroke="#86c46b" strokeWidth="1.6" strokeLinecap="round" opacity="0.7">
+          <path d={`M${x} 66 C ${x - 2} 58, ${x - 3} 54, ${x - 1} 50`} />
+          <path d={`M${x + 4} 66 C ${x + 5} 60, ${x + 6} 56, ${x + 5} 52`} />
+        </g>
+      ))}
+
+      {/* aeration channels branching off the burrow (dotted) */}
+      {[
+        "M176 150 C 150 160, 132 178, 120 202",
+        "M276 196 C 300 204, 314 222, 320 246",
+        "M176 150 C 196 168, 204 190, 200 214",
+      ].map((d, i) => (
+        <path key={i} d={d} stroke="#f5f4f0" strokeOpacity="0.22" strokeWidth="1.2" strokeDasharray="1 5" strokeLinecap="round" />
+      ))}
+
+      {/* burrow casing (loose soil around the worm) */}
+      <path d={spine} stroke="#3a2817" strokeWidth="30" strokeOpacity="0.55" strokeLinecap="round" />
+
+      {/* worm body */}
+      <path d={spine} stroke="url(#wormBody)" strokeWidth="18" strokeLinecap="round" />
+
+      {/* segment rings */}
+      {segments.map((s, i) => (
+        <line
+          key={i}
+          x1={s.x - 8 * Math.cos(Math.atan(s.a))}
+          y1={s.y - 8 * Math.sin(Math.atan(s.a))}
+          x2={s.x + 8 * Math.cos(Math.atan(s.a))}
+          y2={s.y + 8 * Math.sin(Math.atan(s.a))}
+          stroke="#7a4636"
+          strokeWidth="1.1"
+          strokeOpacity="0.55"
         />
       ))}
-      <circle cx="70" cy="60" r="8" className="fill-moss" />
-      <circle cx="67" cy="58" r="1.4" className="fill-paper" />
+
+      {/* clitellum band */}
+      <path d="M150 78 C 138 96, 140 112, 150 120" stroke="#efd2c8" strokeWidth="18" strokeLinecap="round" opacity="0.85" />
+
+      {/* head */}
+      <circle cx="96" cy="66" r="10" fill="#c48472" />
+      <circle cx="93" cy="63" r="2" fill="#3a2817" opacity="0.6" />
+
+      {/* travelling glow at the intake mouth */}
+      <circle cx="96" cy="66" r="16" fill="url(#wormGlow)">
+        <animate attributeName="r" values="10;18;10" dur="3s" repeatCount="indefinite" />
+      </circle>
+
+      {/* nutrient castings cluster at the tail */}
       {[
-        [300, 168],
-        [312, 182],
-        [292, 184],
-      ].map(([x, y]) => (
-        <circle key={`${x}-${y}`} cx={x} cy={y} r="2.5" className="fill-sprout" />
+        [268, 300, 3.2],
+        [280, 292, 2.4],
+        [258, 296, 2.2],
+        [274, 308, 2],
+        [250, 306, 1.8],
+      ].map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#86c46b" opacity={0.9} />
       ))}
-      <g className="fill-ink/60">
-        <text x="86" y="40" className="[font-size:11px]">
-          intake
-        </text>
-        <text x="300" y="150" className="[font-size:11px]">
-          nutrient castings
-        </text>
-      </g>
+
+      {/* nutrients rising from castings back to the root zone */}
+      {[
+        [262, 288],
+        [246, 292],
+        [278, 282],
+      ].map(([x, y], i) => (
+        <g key={i} stroke="#86c46b" strokeWidth="1.3" strokeLinecap="round" opacity="0.75">
+          <path d={`M${x} ${y} V ${y - 14}`} />
+          <path d={`M${x - 3} ${y - 10} L ${x} ${y - 15} L ${x + 3} ${y - 10}`} fill="none" />
+        </g>
+      ))}
+
+      {/* numbered stage labels */}
+      {[
+        ["1", "Intake", 116, 52],
+        ["2", "Aerate", 208, 150],
+        ["3", "Castings enrich", 210, 300],
+      ].map(([n, label, x, y]) => (
+        <g key={n as string}>
+          <circle cx={x as number} cy={(y as number) - 4} r="8" fill="none" stroke="#86c46b" strokeWidth="1" />
+          <text x={x as number} y={(y as number) - 0.5} textAnchor="middle" fontSize="9" fill="#86c46b">
+            {n}
+          </text>
+          <text x={(x as number) + 14} y={(y as number) - 1} fontSize="11" fill="#f5f4f0" fillOpacity="0.7">
+            {label}
+          </text>
+        </g>
+      ))}
     </svg>
   );
 }

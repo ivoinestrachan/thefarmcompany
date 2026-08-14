@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 
 export default function Reveal({
   children,
@@ -32,16 +32,15 @@ export default function Reveal({
     return () => io.disconnect();
   }, []);
 
-  const Component = Tag as React.ElementType;
-  return (
-    <Component
-      ref={ref}
-      className={`${className} transition-all duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+  return createElement(
+    Tag,
+    {
+      ref,
+      className: `${className} transition-all duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
         shown ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-      }`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </Component>
+      }`,
+      style: { transitionDelay: `${delay}ms` },
+    },
+    children
   );
 }
