@@ -55,7 +55,7 @@ function WormModel({
   const outer = useRef<THREE.Group>(null);
   const segs = useRef<THREE.Group>(null);
   const born = useRef(0); // seconds since mount, for the assemble-on-load
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const tmp = useMemo(() => new THREE.Vector3(), []);
 
   const geo = useSegmentGeometry(1, 0.34);
@@ -97,10 +97,17 @@ function WormModel({
       outer.current.rotation.y = -0.12 + explode * 1.0;
       outer.current.rotation.x = 0.08 + explode * 0.3;
       outer.current.rotation.z = explode * -0.2;
-      // start right of the intro copy, glide to centre for the annotated beats
-      outer.current.position.x = (1 - smooth(p, 0.04, 0.16)) * 2.0;
-      outer.current.position.y = 0.1;
-      outer.current.scale.setScalar(0.62);
+      if (size.width < 760) {
+        // phones: centre a smaller worm in the lower area, clear of the copy
+        outer.current.position.x = 0;
+        outer.current.position.y = -1.35 + explode * 0.5;
+        outer.current.scale.setScalar(0.42);
+      } else {
+        // desktop: start right of the intro copy, glide to centre for the beats
+        outer.current.position.x = (1 - smooth(p, 0.04, 0.16)) * 2.0;
+        outer.current.position.y = 0.1;
+        outer.current.scale.setScalar(0.62);
+      }
     }
 
     // Project each segment centre to normalized screen coords so the DOM

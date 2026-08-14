@@ -153,7 +153,7 @@ export default function HeroScroll() {
 
   return (
     <section ref={section} id="hero" className="relative h-[420vh]">
-      <div ref={stage} className="sticky top-0 flex h-screen items-center overflow-hidden bg-char">
+      <div ref={stage} className="sticky top-0 flex h-screen items-start overflow-hidden bg-char md:items-center">
         <div className="grid-dot pointer-events-none absolute inset-0 opacity-40" />
         <Burrow />
 
@@ -163,7 +163,7 @@ export default function HeroScroll() {
         </div>
 
         {/* BEAT · intro */}
-        <div className="relative mx-auto w-full max-w-7xl px-6 lg:px-10">
+        <div className="relative mx-auto w-full max-w-7xl px-6 pt-24 md:pt-0 lg:px-10">
           <div ref={intro} className="max-w-xl">
             <span className="hero-eyebrow eyebrow" data-anim style={{ opacity: 0 }}>
               Regenerative field robotics
@@ -263,6 +263,19 @@ function Beat({
         <h2 className="display mt-4 max-w-xl text-paper text-4xl leading-[0.95] sm:text-5xl lg:text-6xl">
           {title} <span className="display-accent">{accent}</span>
         </h2>
+
+        {/* phones: leader lines don't fit a narrow column, so list the callouts */}
+        <ul className="mt-7 grid grid-cols-2 gap-x-5 gap-y-2.5 md:hidden">
+          {[...left, ...right].map((l) => (
+            <li
+              key={l}
+              className="flex items-center gap-2 font-mono text-[12px] lowercase text-fog"
+            >
+              <span className="h-1 w-1 shrink-0 rounded-full bg-signal" />
+              {l}
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* leader lines — far end tracks the actual worm segment */}

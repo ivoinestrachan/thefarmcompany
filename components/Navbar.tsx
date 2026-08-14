@@ -11,10 +11,11 @@ import { useEffect, useState } from "react";
 const LINKS: { label: string; href: string }[] = [];
 
 const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
-  { label: "X", href: "#", icon: <IconX /> },
-  { label: "Instagram", href: "#", icon: <IconInstagram /> },
-  { label: "LinkedIn", href: "#", icon: <IconLinkedIn /> },
-  { label: "YouTube", href: "#", icon: <IconYouTube /> },
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/company/the-farming-compan/",
+    icon: <IconLinkedIn />,
+  },
 ];
 
 export default function Navbar() {
@@ -139,6 +140,8 @@ export default function Navbar() {
                     <a
                       key={s.label}
                       href={s.href}
+                      target="_blank"
+                      rel="noreferrer"
                       aria-label={s.label}
                       className="transition-colors hover:text-signal"
                     >
@@ -157,33 +160,10 @@ export default function Navbar() {
 
 /* --- icons --------------------------------------------------------------- */
 
-function IconX() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.657l-5.214-6.817-5.966 6.817H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z" />
-    </svg>
-  );
-}
-function IconInstagram() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
 function IconLinkedIn() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M4.98 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM3 9h4v12H3V9Zm7 0h3.8v1.64h.05c.53-1 1.83-2.05 3.76-2.05C21.6 8.59 22 11.2 22 14.3V21h-4v-5.9c0-1.4-.02-3.2-1.95-3.2-1.96 0-2.25 1.53-2.25 3.1V21h-4V9Z" />
-    </svg>
-  );
-}
-function IconYouTube() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M23 12s0-3.2-.41-4.74a2.5 2.5 0 0 0-1.76-1.77C19.29 5.08 12 5.08 12 5.08s-7.29 0-8.83.41a2.5 2.5 0 0 0-1.76 1.77C1 8.8 1 12 1 12s0 3.2.41 4.74a2.5 2.5 0 0 0 1.76 1.77c1.54.41 8.83.41 8.83.41s7.29 0 8.83-.41a2.5 2.5 0 0 0 1.76-1.77C23 15.2 23 12 23 12Zm-13 3.5v-7l6 3.5-6 3.5Z" />
     </svg>
   );
 }
