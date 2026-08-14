@@ -98,15 +98,16 @@ function WormModel({
       outer.current.rotation.x = 0.08 + explode * 0.3;
       outer.current.rotation.z = explode * -0.2;
       if (size.width < 760) {
-        // phones: centre a smaller worm in the lower area, clear of the copy
+        // phones: the intro copy is tall so sit low; the beats are short, so
+        // rise up close to the heading + callout list (less empty gap)
         outer.current.position.x = 0;
-        outer.current.position.y = -1.35 + explode * 0.5;
-        outer.current.scale.setScalar(0.42);
+        outer.current.position.y = -1.5 + smooth(p, 0.12, 0.28) * 0.95 + explode * 0.4;
+        outer.current.scale.setScalar(0.36);
       } else {
         // desktop: start right of the intro copy, glide to centre for the beats
-        outer.current.position.x = (1 - smooth(p, 0.04, 0.16)) * 2.0;
+        outer.current.position.x = (1 - smooth(p, 0.04, 0.16)) * 2.1;
         outer.current.position.y = 0.1;
-        outer.current.scale.setScalar(0.62);
+        outer.current.scale.setScalar(0.5);
       }
     }
 
@@ -135,12 +136,12 @@ function WormModel({
               rotation={[0, 0, Math.PI / 2]}
               castShadow
             >
-              {/* opaque white — no transmission, so the explode stays smooth */}
+              {/* soft pearl white — clean and bright on the charcoal */}
               <meshStandardMaterial
-                color="#f4f2ec"
-                roughness={0.4}
-                metalness={0.02}
-                envMapIntensity={0.9}
+                color="#f0ede5"
+                roughness={0.42}
+                metalness={0.05}
+                envMapIntensity={0.85}
               />
             </mesh>
           );
@@ -169,9 +170,11 @@ export default function WormScene({
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ background: "transparent" }}
     >
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[4, 6, 5]} intensity={2.6} />
-      <pointLight position={[-5, 2, -3]} intensity={16} color="#ffffff" distance={16} />
+      {/* soft neutral lighting for a clean pearl surface */}
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[4, 6, 5]} intensity={2.4} color="#fff6ec" />
+      <pointLight position={[-5, 2, -3]} intensity={14} color="#ffffff" distance={16} />
+      <pointLight position={[4, -2, 3]} intensity={5} color="#e8eefc" distance={12} />
 
       <Suspense fallback={null}>
         {MODEL_URL ? (
@@ -179,11 +182,11 @@ export default function WormScene({
         ) : (
           <WormModel progressRef={progressRef} anchorsRef={anchorsRef} />
         )}
-        {/* inline environment (no network HDR) so transmission has something to refract */}
+        {/* inline environment (no network HDR) so the pearl has soft reflections */}
         <Environment resolution={128}>
-          <Lightformer intensity={2.4} position={[0, 3, 4]} scale={[8, 8, 1]} color="#fff6e8" />
+          <Lightformer intensity={2.2} position={[0, 3, 4]} scale={[8, 8, 1]} color="#fff6e8" />
           <Lightformer intensity={1.4} position={[-4, 1, -3]} scale={[5, 5, 1]} color="#ffffff" />
-          <Lightformer intensity={1.6} position={[4, -2, 2]} scale={[5, 5, 1]} color="#cfe6ff" />
+          <Lightformer intensity={1.5} position={[4, -2, 2]} scale={[5, 5, 1]} color="#cfe6ff" />
         </Environment>
       </Suspense>
     </Canvas>

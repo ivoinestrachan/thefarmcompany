@@ -54,10 +54,9 @@ export default function HeroScroll() {
   const section = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const intro = useRef<HTMLDivElement>(null);
+  const wormWrap = useRef<HTMLDivElement>(null);
+  const glow = useRef<HTMLDivElement>(null);
   const hint = useRef<HTMLDivElement>(null);
-  const scrubFill = useRef<HTMLDivElement>(null);
-  const scrubDot = useRef<HTMLDivElement>(null);
-  const scrubPct = useRef<HTMLSpanElement>(null);
   const beatRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const progressRef = useRef(0);
   // live screen positions of the worm's 7 segments (0..1), filled by WormScene
@@ -70,7 +69,18 @@ export default function HeroScroll() {
 
   useEffect(() => {
     let raf = 0;
+    let lastScroll = window.scrollY;
+    let glowVal = 0;
     const loop = () => {
+      // scroll velocity → a soft glow + slight blur on the worm, decays when idle
+      const nowY = window.scrollY;
+      glowVal = Math.max(Math.abs(nowY - lastScroll), glowVal * 0.9);
+      lastScroll = nowY;
+      const g = Math.min(1, glowVal / 70);
+      if (wormWrap.current)
+        wormWrap.current.style.filter = g > 0.01 ? `blur(${(g * 4).toFixed(2)}px)` : "none";
+      if (glow.current) glow.current.style.opacity = `${(g * 0.55).toFixed(3)}`;
+
       const el = section.current;
       if (el) {
         const rect = el.getBoundingClientRect();
@@ -101,10 +111,6 @@ export default function HeroScroll() {
           }
         }
         if (hint.current) hint.current.style.opacity = `${1 - smooth(p, 0, 0.06)}`;
-        if (scrubFill.current) scrubFill.current.style.width = `${p * 100}%`;
-        if (scrubDot.current) scrubDot.current.style.left = `${p * 100}%`;
-        if (scrubPct.current)
-          scrubPct.current.textContent = `${String(Math.round(p * 100)).padStart(2, "0")}%`;
 
         // connect each leader line to its worm segment's live screen position
         const A = anchorsRef.current;
@@ -157,8 +163,14 @@ export default function HeroScroll() {
         <div className="grid-dot pointer-events-none absolute inset-0 opacity-40" />
         <Burrow />
 
+        {/* scroll-reactive glow behind the worm */}
+        <div
+          ref={glow}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[40rem] w-[40rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(240,136,60,0.3),transparent_60%)] opacity-0 blur-2xl"
+        />
+
         {/* the worm — pinned centrepiece, crawling through the burrow */}
-        <div className="pointer-events-none absolute inset-0">
+        <div ref={wormWrap} className="pointer-events-none absolute inset-0 will-change-[filter]">
           <WormScene progressRef={progressRef} anchorsRef={anchorsRef} />
         </div>
 
@@ -216,15 +228,6 @@ export default function HeroScroll() {
           <div className="mt-1 text-signal">↓</div>
         </div>
 
-        {/* timeline scrubber */}
-        <div className="pointer-events-none absolute bottom-8 right-4 flex items-center gap-2 sm:gap-3 lg:right-10">
-          <span ref={scrubPct} className="font-mono text-[11px] text-fog">00%</span>
-          <div className="relative h-3 w-24 overflow-hidden rounded-full border hairline bg-char2 sm:w-56">
-            <div className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(246,244,242,0.5) 0 1px, transparent 1px 7px)" }} />
-            <div ref={scrubFill} className="absolute inset-y-0 left-0 w-0 bg-signal/25" />
-            <div ref={scrubDot} className="absolute top-1/2 h-4 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal" style={{ left: "0%", boxShadow: "0 0 8px 0 rgba(246,244,242,0.55)" }} />
-          </div>
-        </div>
       </div>
     </section>
   );
