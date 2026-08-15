@@ -7,8 +7,8 @@ import Reveal from "./Reveal";
 
 export default function OldWay() {
   return (
-    <section className="border-y hairline bg-[#f2efe8] py-24 text-[#26241f] lg:py-32">
-      <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1fr_1.05fr] lg:gap-16 lg:px-10">
+    <section className="border-y hairline bg-[#f2efe8] py-24 text-[#26241f] lg:flex lg:min-h-screen lg:items-center lg:py-10">
+      <div className="mx-auto grid w-full max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1fr_1.05fr] lg:gap-16 lg:px-10">
         <Reveal>
           <span className="font-mono text-[0.7rem] font-500 uppercase tracking-[0.22em] text-[#8a8175]">
             The old way
@@ -26,13 +26,14 @@ export default function OldWay() {
         </Reveal>
 
         <Reveal delay={120}>
-          <div className="relative mx-auto w-full max-w-sm">
-            {/* photo — background removed, so the man sits straight on the panel. */}
+          <div className="relative mx-auto w-full max-w-sm lg:w-fit lg:max-w-none">
+            {/* photo — background removed, so the man sits straight on the panel.
+                Height caps to the viewport so the pinned panel never overflows. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/old-way.webp"
               alt="A man spraying chemical weedkiller onto a patch of dead grass"
-              className="w-full"
+              className="w-full lg:h-[58vh] lg:w-auto"
             />
 
             {/* hand-drawn call-out pointing at the spray */}

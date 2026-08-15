@@ -5,7 +5,7 @@
 export const MAP_W = 1000;
 export const MAP_H = 442;
 
-export type Marker = { x: number; y: number; label: string; sub: string; side: "left" | "right"; dy: number };
+export type Marker = { x: number; y: number; label: string; sub: string; side: "left" | "right"; dy: number; nudge: number[] };
 export const MARKERS: Marker[] = [
   {
     "x": 131.4,
@@ -13,7 +13,11 @@ export const MARKERS: Marker[] = [
     "label": "California",
     "sub": "United States",
     "side": "right",
-    "dy": 0
+    "dy": 0,
+    "nudge": [
+      0,
+      0
+    ]
   },
   {
     "x": 344.9,
@@ -21,7 +25,11 @@ export const MARKERS: Marker[] = [
     "label": "Indiana",
     "sub": "United States",
     "side": "right",
-    "dy": 0
+    "dy": 0,
+    "nudge": [
+      0,
+      0
+    ]
   },
   {
     "x": 353.2,
@@ -29,7 +37,11 @@ export const MARKERS: Marker[] = [
     "label": "Kentucky",
     "sub": "United States",
     "side": "left",
-    "dy": 0
+    "dy": 0,
+    "nudge": [
+      0,
+      0
+    ]
   },
   {
     "x": 896.7,
@@ -37,15 +49,23 @@ export const MARKERS: Marker[] = [
     "label": "London",
     "sub": "United Kingdom",
     "side": "left",
-    "dy": -13
+    "dy": -15,
+    "nudge": [
+      -8,
+      -10
+    ]
   },
   {
-    "x": 896.5,
+    "x": 899,
     "y": 137.3,
     "label": "Sussex",
     "sub": "United Kingdom",
     "side": "left",
-    "dy": 13
+    "dy": 15,
+    "nudge": [
+      8,
+      10
+    ]
   }
 ];
 
