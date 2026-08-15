@@ -7,7 +7,7 @@ export default function FooterBar() {
   return (
     <footer className="bg-char">
       <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-6 py-8 sm:flex-row sm:items-center lg:px-10">
-        <a href="#top" className="display text-lg font-700 tracking-tight text-paper">
+        <a href="#top" className="display text-lg font-500 tracking-tight text-paper">
           thefarmcompany
         </a>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">

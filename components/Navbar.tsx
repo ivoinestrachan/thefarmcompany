@@ -36,13 +36,13 @@ export default function Navbar() {
   return (
     <>
       <header className="fixed inset-x-0 top-0 z-50 bg-char">
-        <nav className="mx-auto flex h-18 max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
+        <nav className="mx-auto flex h-[58px] max-w-7xl items-center justify-between px-6 lg:px-10">
           <a
             href="#top"
             aria-label="The Farming Company — home"
             className="text-paper"
           >
-            <span className="display text-xl font-700 tracking-tight">
+            <span className="display text-xl font-500 tracking-tight">
               thefarmcompany
             </span>
           </a>
@@ -112,7 +112,7 @@ export default function Navbar() {
                       onClick={() => setOpen(false)}
                       data-active={i === 0 ? "true" : "false"}
                       style={{ ["--i" as string]: i }}
-                      className="menu-item menu-link display py-2.5 text-[11vw] font-700 leading-[1.05] tracking-tight sm:text-5xl"
+                      className="menu-item menu-link display py-2.5 text-[11vw] font-500 leading-[1.05] tracking-tight sm:text-5xl"
                     >
                       {l.label}
                     </a>

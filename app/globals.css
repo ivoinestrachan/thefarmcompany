@@ -105,9 +105,9 @@ html.lenis body {
 
 .display {
   font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.035em; /* tighter, more editorial */
-  line-height: 0.95;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 0.98;
   text-wrap: balance; /* even, deliberate line breaks on multi-line headings */
 }
 

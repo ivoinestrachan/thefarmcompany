@@ -10,9 +10,10 @@ import { createTimeline, stagger, utils } from "animejs";
 /* -------------------------------------------------------------------------- */
 
 const VIDEOS = [
-  "https://videos.pexels.com/video-files/6444361/6444361-uhd_2560_1440_30fps.mp4", // crop fields
-  "https://videos.pexels.com/video-files/8333151/8333151-uhd_2560_1440_24fps.mp4", // green paddies
-  "https://videos.pexels.com/video-files/5611575/5611575-uhd_2732_1440_30fps.mp4", // countryside
+  "https://videos.pexels.com/video-files/38942518/16564220_1920_1080_25fps.mp4", // grazing cows, NZ hillside
+  "https://videos.pexels.com/video-files/36827757/15603483_1920_1080_30fps.mp4", // green tractor
+  "https://videos.pexels.com/video-files/7913058/7913058-hd_1920_1080_30fps.mp4", // fumigation spraying
+  "https://videos.pexels.com/video-files/3045869/3045869-hd_1920_1080_24fps.mp4", // earthworms close-up
 ];
 const POSTER =
   "https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=2400&q=80";
@@ -31,11 +32,11 @@ export default function Intro() {
   const hint = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 
-  // cycle through the aerial clips with a slow crossfade
+  // cycle through the clips — each holds ~3s, then crossfades to the next
   useEffect(() => {
     const id = window.setInterval(
       () => setActive((a) => (a + 1) % VIDEOS.length),
-      9500
+      4000
     );
     return () => window.clearInterval(id);
   }, []);
@@ -97,7 +98,7 @@ export default function Intro() {
       className="relative flex h-screen items-center justify-center overflow-hidden bg-char"
     >
       {/* footage — framed below the black nav bar (Anduril-style), fades on scroll */}
-      <div ref={media} className="absolute inset-x-3 bottom-3 top-[76px] overflow-hidden will-change-transform sm:inset-x-5 sm:bottom-5 lg:inset-x-6 lg:bottom-6">
+      <div ref={media} className="absolute inset-x-3 bottom-3 top-[58px] overflow-hidden will-change-transform sm:inset-x-5 sm:bottom-5 lg:inset-x-6 lg:bottom-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={POSTER}
@@ -107,7 +108,7 @@ export default function Intro() {
         {VIDEOS.map((src, i) => (
           <video
             key={src}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1800ms] ${
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[800ms] ${
               i === active ? "opacity-100" : "opacity-0"
             }`}
             autoPlay
@@ -125,15 +126,7 @@ export default function Intro() {
       </div>
 
       <div ref={brand} className="relative px-6 text-center">
-        <span
-          className="intro-eyebrow eyebrow justify-center"
-          data-in
-          style={{ opacity: 0 }}
-        >
-          Regenerative field robotics
-        </span>
-
-        <h1 className="display mt-5 text-paper text-[15vw] leading-[0.92] sm:mt-6 sm:text-[11vw] lg:text-[7rem]">
+        <h1 className="display text-paper text-[15vw] leading-[0.92] sm:text-[11vw] lg:text-[7rem]">
           {WORDS.map((w) => (
             <span
               key={w}
