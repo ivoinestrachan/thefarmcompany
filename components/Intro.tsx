@@ -126,7 +126,7 @@ export default function Intro() {
 
       <div ref={brand} className="relative px-6 text-center">
         <span
-          className="intro-eyebrow eyebrow justify-center text-[0.6rem] sm:text-[0.7rem]"
+          className="intro-eyebrow eyebrow justify-center"
           data-in
           style={{ opacity: 0 }}
         >

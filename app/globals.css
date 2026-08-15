@@ -48,13 +48,14 @@
   --color-bone: #f5f4f0;
   --color-mist: #e9e7e0;
 
-  /* Anduril uses licensed Helvetica Now Display; fall back to system Helvetica
-     (near-identical on macOS/iOS), then the Geist webfont off-Mac. Drop
-     HelveticaNowDisplay woff2 into /public and @font-face it to match exactly. */
-  --font-display: "Helvetica Now Display", Helvetica, "Helvetica Neue",
-    var(--font-grotesk), Arial, ui-sans-serif, sans-serif;
-  --font-sans: "Helvetica Now Display", Helvetica, "Helvetica Neue",
-    var(--font-grotesk), Arial, ui-sans-serif, sans-serif;
+  /* System Helvetica (upright) for now — near-identical to Anduril's Helvetica
+     Now Display. Re-add "Helvetica Now Display" to the front of these stacks
+     once the UPRIGHT weights (Regular/Bold/Black) are @font-face'd; only the
+     italic file is loaded today, so keeping it here would slant the whole site. */
+  --font-display: Helvetica, "Helvetica Neue", var(--font-grotesk), Arial,
+    ui-sans-serif, sans-serif;
+  --font-sans: Helvetica, "Helvetica Neue", var(--font-grotesk), Arial,
+    ui-sans-serif, sans-serif;
   --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo,
     Consolas, monospace;
 }
@@ -125,13 +126,12 @@ html.lenis body {
 .eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 400;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
-  color: var(--color-fog);
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--color-paper);
 }
 
 /* Mono chip — role tags, coordinates, packet ids. */

@@ -10,7 +10,7 @@ export default function OldWay() {
     <section className="border-y hairline bg-[#f2efe8] py-24 text-[#26241f] lg:py-32">
       <div className="mx-auto grid w-full max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1fr_1.05fr] lg:gap-16 lg:px-10">
         <Reveal>
-          <span className="font-mono text-[0.7rem] font-500 uppercase tracking-[0.22em] text-[#8a8175]">
+          <span className="text-[1.25rem] font-500 text-[#26241f]">
             The old way
           </span>
           <h2 className="display mt-5 text-3xl leading-[0.98] sm:text-5xl lg:text-6xl">
