@@ -4,9 +4,18 @@ import WaitlistForm from "./WaitlistForm";
 export default function Footer() {
   return (
     <footer id="contact" className="bg-char">
-      {/* contact */}
-      <div className="relative overflow-hidden border-y hairline py-24 lg:py-32">
-        <div className="grid-dot pointer-events-none absolute inset-0 opacity-40" />
+      {/* contact — over a field shot */}
+      <div className="relative overflow-hidden border-y hairline py-28 lg:py-36">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=2400&q=80"
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-char via-char/80 to-char" />
+        <div className="absolute inset-0 bg-char/45" />
+        <div className="grid-dot pointer-events-none absolute inset-0 opacity-25" />
         <div className="relative mx-auto max-w-4xl px-6 text-center lg:px-10">
           <Reveal>
             <span className="eyebrow justify-center">Onboarding · 2026 season</span>

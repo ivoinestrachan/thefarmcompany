@@ -8,16 +8,16 @@
 /* -------------------------------------------------------------------------- */
 
 @theme {
-  /* charcoal canvas + surfaces (warm, not cold black) */
-  --color-char: #252423; /* page */
-  --color-char2: #2f2e2d; /* raised surface / cards */
-  --color-char3: #1f1e1d; /* deep inset / wells */
-  --color-edge: #3a3733; /* hairline base */
+  /* charcoal canvas + surfaces (deep, warm, cinematic — not cold black) */
+  --color-char: #1b1a19; /* page — deeper for contrast + gravitas */
+  --color-char2: #242322; /* raised surface / cards */
+  --color-char3: #131211; /* deep inset / wells */
+  --color-edge: #343029; /* hairline base */
 
   /* type on charcoal */
-  --color-paper: #f6f4f2; /* primary text / warm white */
-  --color-fog: #b4b1af; /* muted text */
-  --color-faint: #86827d; /* faintest text */
+  --color-paper: #f3f1ed; /* primary text / warm white */
+  --color-fog: #a4a09b; /* muted text */
+  --color-faint: #767069; /* faintest text */
   --color-ink: #0a0a0a; /* text on lime, deepest wells */
 
   /* accent — a warm amber, used sparingly (a bit of color, not green) */
@@ -38,12 +38,12 @@
   --color-bone: #f5f4f0;
   --color-mist: #e9e7e0;
 
-  --font-display: var(--font-grotesk), "Space Grotesk", ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-sans: var(--font-grotesk), "Space Grotesk", ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-mono: var(--font-space-mono), "Space Mono", ui-monospace, SFMono-Regular,
-    Menlo, Consolas, monospace;
+  --font-display: var(--font-grotesk), "Helvetica Neue", Helvetica, Arial,
+    ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-grotesk), "Helvetica Neue", Helvetica, Arial,
+    ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
 }
 
 :root {
@@ -60,12 +60,29 @@ body {
   background-color: var(--color-char);
   color: var(--color-paper);
   font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: -0.006em; /* a hair tighter — reads more composed, less UI-default */
   overflow-x: clip; /* stop stray transforms causing horizontal scroll (keeps sticky) */
 }
 
 ::selection {
   background: var(--color-signal);
   color: var(--color-ink);
+}
+
+/* Lenis smooth scroll */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -75,8 +92,9 @@ body {
 .display {
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 0.94;
+  letter-spacing: -0.035em; /* tighter, more editorial */
+  line-height: 0.95;
+  text-wrap: balance; /* even, deliberate line breaks on multi-line headings */
 }
 
 /* The one word we let go green. */
@@ -85,15 +103,20 @@ body {
   font-style: normal;
 }
 
+/* Marked-up handwriting for annotations. */
+.hand {
+  font-family: var(--font-hand), "Comic Sans MS", cursive;
+}
+
 /* Monospace instrument label with a small square "signal" tick — the eyebrow. */
 .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 400;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
   color: var(--color-fog);
 }

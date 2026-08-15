@@ -70,9 +70,10 @@ function WormModel({
 
     // assemble on load: rings fly in from spread-out to seated over ~1.6s
     const assemble = 1 - smooth(born.current, 0.1, 1.7); // 1 → 0
-    // scroll explodes them apart during the anatomy beat, then reseats them
-    const explode = smooth(p, 0.45, 0.58) * (1 - smooth(p, 0.65, 0.74));
-    const separation = assemble * 2.6 + explode * 2.2;
+    // scroll slowly breaks it apart during the anatomy beat, then reseats it —
+    // spread wide so you can look right into each part
+    const explode = smooth(p, 0.44, 0.6) * (1 - smooth(p, 0.68, 0.8));
+    const separation = assemble * 2.6 + explode * 3.7;
     const crawl = 1 - explode; // no peristalsis while it's an exploded diagram
 
     if (segs.current) {

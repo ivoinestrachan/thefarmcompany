@@ -19,8 +19,8 @@ const WormScene = dynamic(() => import("./WormScene"), {
 // beat overlays keyed to scroll-progress windows [fadeInStart, fadeInEnd, fadeOutStart, fadeOutEnd]
 const BEATS: Record<string, [number, number, number, number]> = {
   herd: [0.16, 0.23, 0.36, 0.43],
-  anatomy: [0.45, 0.52, 0.66, 0.73],
-  loop: [0.76, 0.83, 0.99, 1.0],
+  anatomy: [0.44, 0.54, 0.72, 0.8],
+  loop: [0.82, 0.87, 0.99, 1.0],
 };
 
 function smooth(p: number, a: number, b: number) {
@@ -158,7 +158,7 @@ export default function HeroScroll() {
   };
 
   return (
-    <section ref={section} id="hero" className="relative h-[420vh]">
+    <section ref={section} id="hero" className="relative h-[560vh]">
       <div ref={stage} className="sticky top-0 flex h-screen items-start overflow-hidden bg-char md:items-center">
         <div className="grid-dot pointer-events-none absolute inset-0 opacity-40" />
         <Burrow />
@@ -225,7 +225,9 @@ export default function HeroScroll() {
         {/* scroll hint */}
         <div ref={hint} className="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
           <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-faint">scroll</div>
-          <div className="mt-1 text-signal">↓</div>
+          <svg width="26" height="11" viewBox="0 0 26 11" fill="none" aria-hidden className="mx-auto mt-2.5 text-signal">
+            <path d="M1 1l12 8.5L25 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
         </div>
 
       </div>

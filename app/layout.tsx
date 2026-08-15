@@ -1,19 +1,28 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, Space_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Caveat } from "next/font/google";
 import "./globals.css";
 
-// Engineered geometric grotesk for display + body — the DIN-adjacent voice.
-const grotesk = Space_Grotesk({
+// Handwriting for the marked-up "old way" annotation.
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+  variable: "--font-hand",
+});
+
+// Geist — a clean, neutral grotesque (closest free match to Anduril's
+// Helvetica Now Display) for display + body.
+const grotesk = Geist({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
   variable: "--font-grotesk",
 });
 
-// Monospace for the instrument layer — labels, telemetry, command lines.
-const spaceMono = Space_Mono({
+// Geist Mono for the instrument layer — labels, telemetry, coordinates.
+const spaceMono = Geist_Mono({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "500", "700"],
   display: "swap",
   variable: "--font-space-mono",
 });
@@ -49,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${grotesk.variable} ${spaceMono.variable}`}>
+    <html lang="en" className={`${grotesk.variable} ${spaceMono.variable} ${caveat.variable}`}>
       <body className="antialiased">{children}</body>
     </html>
   );

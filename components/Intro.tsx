@@ -9,8 +9,11 @@ import { createTimeline, stagger, utils } from "animejs";
 /*  the worm hero directly below (no empty gap). Falls back to a still frame.   */
 /* -------------------------------------------------------------------------- */
 
-const VIDEO_SRC =
-  "https://videos.pexels.com/video-files/6444361/6444361-uhd_2560_1440_30fps.mp4";
+const VIDEOS = [
+  "https://videos.pexels.com/video-files/6444361/6444361-uhd_2560_1440_30fps.mp4", // crop fields
+  "https://videos.pexels.com/video-files/8333151/8333151-uhd_2560_1440_24fps.mp4", // green paddies
+  "https://videos.pexels.com/video-files/5611575/5611575-uhd_2732_1440_30fps.mp4", // countryside
+];
 const POSTER =
   "https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=2400&q=80";
 
@@ -26,7 +29,16 @@ export default function Intro() {
   const media = useRef<HTMLDivElement>(null);
   const brand = useRef<HTMLDivElement>(null);
   const hint = useRef<HTMLDivElement>(null);
-  const [failed, setFailed] = useState(false);
+  const [active, setActive] = useState(0);
+
+  // cycle through the aerial clips with a slow crossfade
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setActive((a) => (a + 1) % VIDEOS.length),
+      9500
+    );
+    return () => window.clearInterval(id);
+  }, []);
 
   // dissolve as the intro scrolls out of view (no pinning → no gap)
   useEffect(() => {
@@ -92,19 +104,21 @@ export default function Intro() {
           alt="Aerial view of farm fields"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        {!failed && (
+        {VIDEOS.map((src, i) => (
           <video
-            className="absolute inset-0 h-full w-full object-cover"
+            key={src}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1800ms] ${
+              i === active ? "opacity-100" : "opacity-0"
+            }`}
             autoPlay
             muted
             loop
             playsInline
             poster={POSTER}
-            onError={() => setFailed(true)}
           >
-            <source src={VIDEO_SRC} type="video/mp4" />
+            <source src={src} type="video/mp4" />
           </video>
-        )}
+        ))}
         <div className="absolute inset-0 bg-char/45" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,30,29,0.35),rgba(31,30,29,0.82))]" />
         <div className="grid-dot absolute inset-0 opacity-25" />
@@ -159,7 +173,16 @@ export default function Intro() {
         <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-paper/60 sm:text-[11px]">
           scroll
         </div>
-        <div className="mt-1 text-signal">↓</div>
+        <svg
+          width="26"
+          height="11"
+          viewBox="0 0 26 11"
+          fill="none"
+          aria-hidden
+          className="mx-auto mt-2.5 text-signal"
+        >
+          <path d="M1 1l12 8.5L25 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
       </div>
     </section>
   );
