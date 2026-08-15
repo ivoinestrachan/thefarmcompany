@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Anduril's typeface — Helvetica Now Display (licensed). Add the upright
+   weights (Regular/Bold/Black) here to switch the whole site to it. */
+@font-face {
+  font-family: "Helvetica Now Display";
+  src: url("/fonts/HelveticaNowDisplay-RegIta.woff") format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 /* -------------------------------------------------------------------------- */
 /*  The Farming Company — "field lab" design system.                           */
 /*  Warm-charcoal canvas, monospace instrumentation, and a single living-green */
@@ -8,11 +18,11 @@
 /* -------------------------------------------------------------------------- */
 
 @theme {
-  /* charcoal canvas + surfaces (deep, warm, cinematic — not cold black) */
-  --color-char: #1b1a19; /* page — deeper for contrast + gravitas */
-  --color-char2: #242322; /* raised surface / cards */
-  --color-char3: #131211; /* deep inset / wells */
-  --color-edge: #343029; /* hairline base */
+  /* near-black canvas + surfaces (Anduril black) */
+  --color-char: #070707; /* page */
+  --color-char2: #151515; /* raised surface / cards */
+  --color-char3: #000000; /* deep inset / wells */
+  --color-edge: #272727; /* hairline base */
 
   /* type on charcoal */
   --color-paper: #f3f1ed; /* primary text / warm white */
@@ -20,8 +30,8 @@
   --color-faint: #767069; /* faintest text */
   --color-ink: #0a0a0a; /* text on lime, deepest wells */
 
-  /* accent — a warm amber, used sparingly (a bit of color, not green) */
-  --color-signal: #f0883c;
+  /* accent — monochrome: a bright warm white. No colour on the page. */
+  --color-signal: #f2efe9;
   --color-leaf: #4a8f5b;
   --color-sprout: #86c46b;
   --color-moss: #2f5d3a;
@@ -38,10 +48,13 @@
   --color-bone: #f5f4f0;
   --color-mist: #e9e7e0;
 
-  --font-display: var(--font-grotesk), "Helvetica Neue", Helvetica, Arial,
-    ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-grotesk), "Helvetica Neue", Helvetica, Arial,
-    ui-sans-serif, system-ui, sans-serif;
+  /* Anduril uses licensed Helvetica Now Display; fall back to system Helvetica
+     (near-identical on macOS/iOS), then the Geist webfont off-Mac. Drop
+     HelveticaNowDisplay woff2 into /public and @font-face it to match exactly. */
+  --font-display: "Helvetica Now Display", Helvetica, "Helvetica Neue",
+    var(--font-grotesk), Arial, ui-sans-serif, sans-serif;
+  --font-sans: "Helvetica Now Display", Helvetica, "Helvetica Neue",
+    var(--font-grotesk), Arial, ui-sans-serif, sans-serif;
   --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo,
     Consolas, monospace;
 }

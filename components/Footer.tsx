@@ -10,7 +10,7 @@ export default function Footer() {
   return (
     <section
       id="contact"
-      className="relative flex items-center overflow-hidden border-y hairline bg-char py-28 lg:min-h-screen lg:py-36"
+      className="relative flex items-center overflow-hidden border-y hairline bg-char py-28 lg:py-36"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

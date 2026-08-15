@@ -96,8 +96,8 @@ export default function Intro() {
       id="top"
       className="relative flex h-screen items-center justify-center overflow-hidden bg-char"
     >
-      {/* footage — fades + zooms as the section scrolls away */}
-      <div ref={media} className="absolute inset-0 will-change-transform">
+      {/* footage — framed below the black nav bar (Anduril-style), fades on scroll */}
+      <div ref={media} className="absolute inset-x-3 bottom-3 top-[76px] overflow-hidden will-change-transform sm:inset-x-5 sm:bottom-5 lg:inset-x-6 lg:bottom-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={POSTER}
@@ -119,19 +119,9 @@ export default function Intro() {
             <source src={src} type="video/mp4" />
           </video>
         ))}
-        <div className="absolute inset-0 bg-char/45" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(31,30,29,0.35),rgba(31,30,29,0.82))]" />
-        <div className="grid-dot absolute inset-0 opacity-25" />
-        <div className="absolute inset-5 sm:inset-10">
-          {[
-            "left-0 top-0 border-l-2 border-t-2",
-            "right-0 top-0 border-r-2 border-t-2",
-            "left-0 bottom-0 border-l-2 border-b-2",
-            "right-0 bottom-0 border-r-2 border-b-2",
-          ].map((c) => (
-            <span key={c} className={`absolute h-5 w-5 border-signal/50 sm:h-6 sm:w-6 ${c}`} />
-          ))}
-        </div>
+        <div className="absolute inset-0 bg-char/40" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(7,7,7,0.3),rgba(7,7,7,0.78))]" />
+        <div className="grid-dot absolute inset-0 opacity-20" />
       </div>
 
       <div ref={brand} className="relative px-6 text-center">

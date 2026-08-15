@@ -19,15 +19,7 @@ const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -43,13 +35,7 @@ export default function Navbar() {
 
   return (
     <>
-      <header
-        className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
-          scrolled && !open
-            ? "border-b hairline bg-char/80 backdrop-blur-xl"
-            : "border-b border-transparent bg-transparent"
-        }`}
-      >
+      <header className="fixed inset-x-0 top-0 z-50 bg-char">
         <nav className="mx-auto flex h-18 max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
           <a
             href="#top"
@@ -67,16 +53,19 @@ export default function Navbar() {
               <a
                 key={l.href}
                 href={l.href}
-                className="font-mono text-[13px] text-fog transition-colors hover:text-paper"
+                className="text-[15px] text-fog transition-colors hover:text-paper"
               >
                 {l.label}
               </a>
             ))}
             <a
               href="#contact"
-              className="rounded-md bg-signal px-4 py-2 font-mono text-[13px] font-700 text-ink transition-opacity hover:opacity-90"
+              className="group inline-flex items-center gap-2 text-[15px] text-paper transition-colors hover:text-fog"
             >
               Talk to us
+              <span className="transition-transform duration-300 group-hover:translate-x-1">
+                →
+              </span>
             </a>
           </div>
 
