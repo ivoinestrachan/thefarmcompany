@@ -60,9 +60,9 @@ export default function Reach() {
               >
                 <span className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer p-2.5">
                   <span className="relative flex h-2.5 w-2.5 items-center justify-center">
-                    <span className="absolute h-4 w-4 rounded-full bg-signal/20 blur-[3px] transition-all duration-200 group-hover:h-6 group-hover:w-6 group-hover:bg-signal/35" />
-                    <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-signal/50" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-signal shadow-[0_0_6px_1px_rgba(242,239,233,0.55)] transition-transform duration-200 group-hover:scale-[1.6]" />
+                    <span className="absolute h-4 w-4 rounded-full bg-green/20 blur-[3px] transition-all duration-200 group-hover:h-6 group-hover:w-6 group-hover:bg-green/35" />
+                    <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-green/50" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green shadow-[0_0_6px_1px_rgba(125,155,106,0.6)] transition-transform duration-200 group-hover:scale-[1.6]" />
                   </span>
                 </span>
                 <div
@@ -86,7 +86,7 @@ export default function Reach() {
           <ul className="mt-8 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:hidden">
             {MARKERS.map((m) => (
               <li key={m.label} className="flex items-center gap-2 font-mono text-[12px]">
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-signal" />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green" />
                 <span className="text-paper">{m.label}</span>
                 <span className="text-faint">
                   {m.sub === "United States" ? "US" : "UK"}

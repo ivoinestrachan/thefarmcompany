@@ -190,7 +190,7 @@ function AppFrame() {
 
         <MapPin x="28%" y="42%" label="Zone A · thriving" tone="signal" />
         <MapPin x="63%" y="38%" label="Moisture dip" tone="soil" />
-        <MapPin x="46%" y="72%" label="Grazer · G-04" tone="paper" />
+        <MapPin x="46%" y="72%" label="Wiggler · W-04" tone="paper" />
 
         <div className="pointer-events-none absolute inset-3">
           {[

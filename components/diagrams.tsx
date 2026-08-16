@@ -7,7 +7,7 @@ export function LoopDiagram({ className = "" }: { className?: string }) {
   const r = 118;
 
   const nodes = [
-    { key: "Kill weeds", sub: "Grazer", angle: -90, color: "#86c46b" },
+    { key: "Kill weeds", sub: "Wiggler", angle: -90, color: "#86c46b" },
     { key: "Aerate", sub: "Tiller", angle: 0, color: "#4a8f5b" },
     { key: "Enrich", sub: "Castings", angle: 90, color: "#86c46b" },
     { key: "Sense", sub: "Scout", angle: 180, color: "#4a8f5b" },
@@ -535,7 +535,7 @@ export function BugUnit({ className = "" }: { className?: string }) {
       viewBox="0 0 360 360"
       className={className}
       role="img"
-      aria-label="The Grazer — an autonomous soil bug, product render"
+      aria-label="The Wiggler — an autonomous soil bug, product render"
       preserveAspectRatio="xMidYMid slice"
     >
       <defs>

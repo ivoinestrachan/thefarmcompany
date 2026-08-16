@@ -4,7 +4,7 @@ import { LoopDiagram } from "./diagrams";
 const STEPS = [
   {
     k: "Kill weeds",
-    v: "Grazers find and remove every weed mechanically, so crops keep the light, water, and nutrients they need. No herbicide.",
+    v: "Wigglers find and remove every weed mechanically, so crops keep the light, water, and nutrients they need. No herbicide.",
   },
   {
     k: "Aerate",

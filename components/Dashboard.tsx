@@ -110,7 +110,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-4 space-y-1">
-                  <Row t="Grazer · G-04 cleared row 12" time="2m ago" />
+                  <Row t="Wiggler · W-04 cleared row 12" time="2m ago" />
                   <Row t="Tiller · injected microbes, zone B" time="9m ago" />
                   <Row t="Scout · flagged moisture dip, plot 14" time="14m ago" />
                 </div>
@@ -141,7 +141,7 @@ function SitePreview() {
       {/* detection pins, sat on the field */}
       <Pin x="26%" y="60%" tone="signal" label="Zone A · thriving" />
       <Pin x="66%" y="54%" tone="soil" label="Moisture dip" />
-      <Pin x="42%" y="80%" tone="paper" label="Grazer · G-04" />
+      <Pin x="42%" y="80%" tone="paper" label="Wiggler · W-04" />
 
       {/* reticle corners */}
       <div className="pointer-events-none absolute inset-3">

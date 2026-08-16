@@ -18,23 +18,29 @@
 /* -------------------------------------------------------------------------- */
 
 @theme {
-  /* near-black canvas + surfaces (Anduril black) */
-  --color-char: #070707; /* page */
-  --color-char2: #151515; /* raised surface / cards */
-  --color-char3: #000000; /* deep inset / wells */
-  --color-edge: #272727; /* hairline base */
+  /* warm soil-black canvas + surfaces — near-black, but shifted toward soil so
+     it reads organic rather than clinical. */
+  --color-char: #0d0b0a; /* page */
+  --color-char2: #17140f; /* raised surface / cards */
+  --color-char3: #060504; /* deep inset / wells */
+  --color-edge: #2a2622; /* hairline base */
 
   /* type on charcoal */
   --color-paper: #f3f1ed; /* primary text / warm white */
-  --color-fog: #a4a09b; /* muted text */
-  --color-faint: #767069; /* faintest text */
-  --color-ink: #0a0a0a; /* text on lime, deepest wells */
+  --color-fog: #a6a099; /* muted text */
+  --color-faint: #7a736b; /* faintest text */
+  --color-ink: #0a0a0a; /* text on light surfaces, deepest wells */
 
-  /* accent — monochrome: a bright warm white. No colour on the page. */
+  /* CTAs / buttons stay a warm bone-white. */
   --color-signal: #f2efe9;
-  --color-leaf: #4a8f5b;
-  --color-sprout: #86c46b;
-  --color-moss: #2f5d3a;
+
+  /* the one living cue — a muted moss green. Used sparingly: signal dots,
+     hover states, key numbers, one accented word. Not neon, not "AI green". */
+  --color-green: #7d9b6a;
+  --color-green-deep: #5c7a52;
+  --color-leaf: #7d9b6a;
+  --color-sprout: #9bb884;
+  --color-moss: #3f5236;
 
   /* warm data spectrum for telemetry variety */
   --color-soil: #d19a66;
@@ -82,6 +88,12 @@ body {
 ::selection {
   background: var(--color-signal);
   color: var(--color-ink);
+}
+
+/* Tailwind v4 drops the default button cursor — put it back. */
+button:not(:disabled),
+[role="button"] {
+  cursor: pointer;
 }
 
 /* Lenis smooth scroll */

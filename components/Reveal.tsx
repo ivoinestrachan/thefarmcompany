@@ -36,8 +36,8 @@ export default function Reveal({
     Tag,
     {
       ref,
-      className: `${className} transition-all duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        shown ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+      className: `${className} transition-all duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        shown ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
       }`,
       style: { transitionDelay: `${delay}ms` },
     },

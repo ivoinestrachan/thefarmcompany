@@ -60,12 +60,9 @@ export default function Navbar() {
             ))}
             <a
               href="#contact"
-              className="group inline-flex items-center gap-2 text-[15px] text-paper transition-colors hover:text-fog"
+              className="text-[15px] text-paper transition-colors hover:text-fog"
             >
               Talk to us
-              <span className="transition-transform duration-300 group-hover:translate-x-1">
-                →
-              </span>
             </a>
           </div>
 

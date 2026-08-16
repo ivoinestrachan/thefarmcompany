@@ -28,6 +28,7 @@ function smooth(p: number, a: number, b: number) {
 export default function Intro() {
   const section = useRef<HTMLElement>(null);
   const media = useRef<HTMLDivElement>(null);
+  const mediaInner = useRef<HTMLDivElement>(null);
   const brand = useRef<HTMLDivElement>(null);
   const hint = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -51,7 +52,11 @@ export default function Intro() {
         const exit = Math.min(1, Math.max(0, -rect.top / window.innerHeight));
         if (media.current) {
           media.current.style.opacity = `${1 - smooth(exit, 0.1, 0.9) * 0.85}`;
-          media.current.style.transform = `scale(${1 + smooth(exit, 0, 1) * 0.14})`;
+        }
+        // scale an INNER layer, not the clip box — a scaled overflow-hidden box
+        // renders a 1px seam at its edge, a static one doesn't.
+        if (mediaInner.current) {
+          mediaInner.current.style.transform = `scale(${1 + smooth(exit, 0, 1) * 0.14})`;
         }
         if (brand.current) {
           const out = smooth(exit, 0, 0.55);
@@ -98,31 +103,33 @@ export default function Intro() {
       className="relative flex h-screen items-center justify-center overflow-hidden bg-char"
     >
       {/* footage — framed below the black nav bar (Anduril-style), fades on scroll */}
-      <div ref={media} className="absolute inset-x-3 bottom-3 top-[58px] overflow-hidden will-change-transform sm:inset-x-5 sm:bottom-5 lg:inset-x-6 lg:bottom-6">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={POSTER}
-          alt="Aerial view of farm fields"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        {VIDEOS.map((src, i) => (
-          <video
-            key={src}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[800ms] ${
-              i === active ? "opacity-100" : "opacity-0"
-            }`}
-            autoPlay
-            muted
-            loop
-            playsInline
-            poster={POSTER}
-          >
-            <source src={src} type="video/mp4" />
-          </video>
-        ))}
-        <div className="absolute inset-0 bg-char/40" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(7,7,7,0.3),rgba(7,7,7,0.78))]" />
-        <div className="grid-dot absolute inset-0 opacity-20" />
+      <div ref={media} className="absolute inset-x-3 bottom-0 top-[58px] overflow-hidden sm:inset-x-5 lg:inset-x-6">
+        <div ref={mediaInner} className="absolute inset-0 will-change-transform">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={POSTER}
+            alt="Aerial view of farm fields"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          {VIDEOS.map((src, i) => (
+            <video
+              key={src}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[800ms] ${
+                i === active ? "opacity-100" : "opacity-0"
+              }`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={POSTER}
+            >
+              <source src={src} type="video/mp4" />
+            </video>
+          ))}
+          <div className="absolute inset-0 bg-char/40" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(13,11,10,0.3),rgba(13,11,10,0.8))]" />
+          <div className="grid-dot absolute inset-0 opacity-20" />
+        </div>
       </div>
 
       <div ref={brand} className="relative px-6 text-center">
@@ -139,7 +146,7 @@ export default function Intro() {
         </h1>
 
         <p
-          className="intro-tag mx-auto mt-5 max-w-xs text-sm leading-relaxed text-paper/80 sm:mt-6 sm:max-w-md sm:text-[15px]"
+          className="intro-tag mx-auto mt-6 max-w-md text-lg leading-relaxed text-paper/85 sm:mt-7 sm:max-w-xl sm:text-2xl"
           data-in
           style={{ opacity: 0 }}
         >

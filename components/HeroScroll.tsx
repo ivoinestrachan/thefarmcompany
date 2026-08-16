@@ -182,9 +182,9 @@ export default function HeroScroll() {
               <br />
               <SplitLine text="bugs that" />
               <br />
-              <SplitLine text="kill weeds." />
+              <SplitLine text="eat weeds." />
             </h1>
-            <p className="hero-sub mt-6 max-w-sm text-sm leading-relaxed text-fog" data-anim style={{ opacity: 0 }}>
+            <p className="hero-sub mt-7 max-w-lg text-lg leading-relaxed text-paper/80 sm:text-xl" data-anim style={{ opacity: 0 }}>
               Small robots that eat the weeds instead of spraying them. They
               loosen and feed the soil the way earthworms do, and send you live
               readings from every plant and every acre.
@@ -193,13 +193,13 @@ export default function HeroScroll() {
         </div>
 
         {/* BEAT · the bug */}
-        <Beat innerRef={setBeat("herd")} beatKey="herd" register={register} eyebrow="The Grazer" title="One bug," accent="every job."
+        <Beat innerRef={setBeat("herd")} beatKey="herd" register={register} eyebrow="The Wiggler" title="One bug," accent="every job."
           left={["pulls weeds", "aerates soil"]}
           right={["reads plants", "zero chemicals", "8 ac / day"]}
         />
 
         {/* BEAT · inside */}
-        <Beat innerRef={setBeat("anatomy")} beatKey="anatomy" register={register} eyebrow="Anatomy · Grazer G-04" title="Inside" accent="the Grazer."
+        <Beat innerRef={setBeat("anatomy")} beatKey="anatomy" register={register} eyebrow="Anatomy · Wiggler W-04" title="Inside" accent="the Wiggler."
           left={["chassis spine", "peristaltic drive", "support insert"]}
           right={["vision sensor", "segment ring", "moisture probe"]}
         />
