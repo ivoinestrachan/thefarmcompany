@@ -28,7 +28,7 @@ const spaceMono = Geist_Mono({
   variable: "--font-space-mono",
 });
 
-const headline = "The Farming Company: Autonomous Weeding Robots";
+const headline = "The Farming Company";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
