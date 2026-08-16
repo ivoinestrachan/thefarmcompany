@@ -6,7 +6,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 export const metadata: Metadata = {
   title: "The Wiggler · The Farming Company",
   description:
-    "The Wiggler — an autonomous segmented soil robot that pulls weeds mechanically, aerates and feeds the soil, and streams live readings from every plant and every acre.",
+    "The Wiggler is an autonomous segmented soil robot that pulls weeds mechanically, aerates and feeds the soil, and streams live readings from every plant and every acre.",
 };
 
 const SPECS: { heading: string; items: string[] }[] = [
@@ -36,7 +36,7 @@ export default function WigglerPage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/worm.webp"
-          alt="The Wiggler — an autonomous segmented soil robot"
+          alt="The Wiggler, an autonomous segmented soil robot"
           className="pointer-events-none absolute left-1/2 top-1/2 w-[70%] max-w-3xl -translate-x-1/2 -translate-y-[58%] drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)]"
         />
 

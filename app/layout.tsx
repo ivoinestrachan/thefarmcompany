@@ -28,7 +28,7 @@ const spaceMono = Geist_Mono({
   variable: "--font-space-mono",
 });
 
-const headline = "The Farming Company — Autonomous Weeding Robots";
+const headline = "The Farming Company: Autonomous Weeding Robots";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     "agricultural robotics",
     "regenerative agriculture",
     "soil health",
-    "chemical-free weeding",
+    "weeding without chemicals",
     "the Wiggler",
   ],
   authors: [{ name: "Ivoine Strachan" }],
