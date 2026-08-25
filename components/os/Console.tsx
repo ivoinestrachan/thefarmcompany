@@ -51,13 +51,6 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
     <div className="fixed inset-0 flex bg-[#f6f7f5] text-neutral-900">
       {/* Sidebar */}
       <aside className="w-[248px] shrink-0 border-r border-neutral-200 bg-white flex flex-col">
-        <div className="h-14 flex items-center px-5 border-b border-neutral-100">
-          <span className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-neutral-900">
-            <span className="h-4 w-4 rounded-[5px] bg-[#3f7a3f]" />
-            The Farming Company
-          </span>
-        </div>
-
         <div className="px-3 py-3 border-b border-neutral-100">
           <label className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 px-2">
             Farm
