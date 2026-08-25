@@ -342,6 +342,25 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
     (map.getSource("weeds") as maplibregl.GeoJSONSource | undefined)?.setData(weedsToGeoJSON(fields));
   }, [fields, selectedFieldId]);
 
+  // Re-fit the view when the set of fields changes (e.g. switching farms).
+  const fieldKeyRef = useRef("");
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current || !fields.length) return;
+    const key = fields.map((f) => f.id).join(",");
+    if (key === fieldKeyRef.current) return;
+    fieldKeyRef.current = key;
+    const all = fields.flatMap((f) => f.geometry.coordinates[0]);
+    const b = all.reduce(
+      (acc, [lng, lat]) => [
+        Math.min(acc[0], lng), Math.min(acc[1], lat),
+        Math.max(acc[2], lng), Math.max(acc[3], lat),
+      ],
+      [Infinity, Infinity, -Infinity, -Infinity]
+    );
+    map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 100, duration: 800, maxZoom: 16 });
+  }, [fields]);
+
   // Toggle layer visibility.
   useEffect(() => {
     const map = mapRef.current;

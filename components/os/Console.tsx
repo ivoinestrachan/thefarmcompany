@@ -360,6 +360,27 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             }
             return data.error as string | undefined;
           }}
+          onImport={async () => {
+            const res = await fetch("/api/farms/import-osm", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: "Napa Valley (real fields)",
+                location: "Napa, California",
+                // A vineyard-dense box around Oakville/Yountville.
+                minLng: -122.44, minLat: 38.40, maxLng: -122.36, maxLat: 38.47,
+                limit: 24,
+              }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              setActiveFarmId(data.farm.id);
+              setSelectedFieldId(null);
+              setShowNewFarm(false);
+              router.refresh();
+            }
+            return data.error as string | undefined;
+          }}
         />
       )}
 
@@ -839,16 +860,19 @@ function Shell({ children, onClose, dismissable = true }: { children: React.Reac
 function NewFarmModal({
   onClose,
   onCreate,
+  onImport,
   dismissable,
 }: {
   onClose: () => void;
   onCreate: (p: { name: string; location: string }) => Promise<string | undefined>;
+  onImport: () => Promise<string | undefined>;
   dismissable: boolean;
 }) {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   return (
     <Shell onClose={onClose} dismissable={dismissable}>
@@ -881,6 +905,26 @@ function NewFarmModal({
           {busy ? "Creating…" : "Create farm"}
         </button>
       </div>
+
+      <div className="my-4 flex items-center gap-3 text-[11px] text-neutral-400">
+        <span className="flex-1 h-px bg-neutral-200" /> or <span className="flex-1 h-px bg-neutral-200" />
+      </div>
+
+      <button
+        disabled={importing}
+        onClick={async () => {
+          setImporting(true);
+          setError(null);
+          const err = await onImport();
+          if (err) { setError(err); setImporting(false); }
+        }}
+        className="w-full h-10 rounded-lg border border-[#3f7a3f]/30 text-[#2f5a2f] text-[13px] font-medium hover:bg-[#eef4ee] disabled:opacity-50"
+      >
+        {importing ? "Importing real fields…" : "Import real Napa vineyards (OpenStreetMap)"}
+      </button>
+      <p className="mt-1.5 text-[11px] text-neutral-400 text-center">
+        Loads actual mapped vineyard &amp; orchard boundaries near Napa.
+      </p>
     </Shell>
   );
 }
