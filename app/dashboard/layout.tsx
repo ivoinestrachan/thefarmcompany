@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "farmOS",
+  title: "Dashboard · The Farming Company",
   robots: { index: false, follow: false },
 };
 

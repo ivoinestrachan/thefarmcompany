@@ -4,7 +4,7 @@ import { getUser } from "@/lib/auth";
 import AuthForm from "@/components/os/AuthForm";
 
 export const metadata: Metadata = {
-  title: "Create account · farmOS",
+  title: "Create account · The Farming Company",
   robots: { index: false, follow: false },
 };
 

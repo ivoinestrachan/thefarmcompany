@@ -41,95 +41,78 @@ export default function AuthForm({ mode }: { mode: Mode }) {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-4 os-desktop">
-      <div className="w-full max-w-[400px]">
-        {/* window chrome */}
-        <div className="rounded-xl bg-white shadow-[0_20px_60px_-15px_rgba(20,40,20,0.35)] ring-1 ring-black/5 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 h-10 border-b border-neutral-100 bg-neutral-50/80">
-            <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-            <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
-            <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-            <span className="ml-2 text-[12px] font-medium text-neutral-400 select-none">
-              farmOS — {isRegister ? "New account" : "Sign in"}
-            </span>
+    <div className="min-h-screen w-full flex items-center justify-center bg-white px-4">
+      <div className="w-full max-w-[360px]">
+        <div className="mb-8">
+          <div className="text-[26px] font-semibold tracking-tight text-neutral-900">
+            {isRegister ? "Create your account" : "Sign in"}
           </div>
-
-          <div className="px-7 py-8">
-            <div className="mb-6">
-              <div className="text-[22px] font-semibold tracking-tight text-neutral-900">
-                {isRegister ? "Create your farm account" : "Welcome back"}
-              </div>
-              <p className="mt-1 text-[13px] text-neutral-500">
-                {isRegister
-                  ? "Map your land, log your crops, and scout every acre."
-                  : "Sign in to your fields and records."}
-              </p>
-            </div>
-
-            <form onSubmit={submit} className="space-y-3">
-              {isRegister && (
-                <Field
-                  label="Full name"
-                  value={name}
-                  onChange={setName}
-                  type="text"
-                  placeholder="Mike Rivera"
-                  autoFocus
-                />
-              )}
-              <Field
-                label="Email"
-                value={email}
-                onChange={setEmail}
-                type="email"
-                placeholder="you@farm.com"
-                autoFocus={!isRegister}
-              />
-              <Field
-                label="Password"
-                value={password}
-                onChange={setPassword}
-                type="password"
-                placeholder={isRegister ? "At least 8 characters" : "••••••••"}
-              />
-
-              {error && (
-                <div className="rounded-md bg-red-50 px-3 py-2 text-[12.5px] text-red-600 ring-1 ring-red-100">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full h-10 rounded-lg bg-[#3f7a3f] text-white text-[14px] font-medium transition hover:bg-[#356b35] disabled:opacity-60"
-              >
-                {busy ? "One moment…" : isRegister ? "Create account" : "Sign in"}
-              </button>
-            </form>
-
-            <div className="mt-5 text-center text-[13px] text-neutral-500">
-              {isRegister ? (
-                <>
-                  Already set up?{" "}
-                  <Link href="/login" className="text-[#3f7a3f] font-medium hover:underline">
-                    Sign in
-                  </Link>
-                </>
-              ) : (
-                <>
-                  New here?{" "}
-                  <Link href="/register" className="text-[#3f7a3f] font-medium hover:underline">
-                    Create an account
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
+          <p className="mt-1.5 text-[13.5px] text-neutral-500">
+            {isRegister
+              ? "Map your land, log your crops, and scout every acre."
+              : "Welcome back to your fields and records."}
+          </p>
         </div>
-        <p className="mt-4 text-center text-[12px] text-white/70">
-          The Farming Company · farmOS
-        </p>
+
+        <form onSubmit={submit} className="space-y-3">
+          {isRegister && (
+            <Field
+              label="Full name"
+              value={name}
+              onChange={setName}
+              type="text"
+              placeholder="Mike Rivera"
+              autoFocus
+            />
+          )}
+          <Field
+            label="Email"
+            value={email}
+            onChange={setEmail}
+            type="email"
+            placeholder="you@farm.com"
+            autoFocus={!isRegister}
+          />
+          <Field
+            label="Password"
+            value={password}
+            onChange={setPassword}
+            type="password"
+            placeholder={isRegister ? "At least 8 characters" : "••••••••"}
+          />
+
+          {error && (
+            <div className="rounded-md bg-red-50 px-3 py-2 text-[12.5px] text-red-600 ring-1 ring-red-100">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full h-10 rounded-lg bg-[#3f7a3f] text-white text-[14px] font-medium transition hover:bg-[#356b35] disabled:opacity-60"
+          >
+            {busy ? "One moment…" : isRegister ? "Create account" : "Sign in"}
+          </button>
+        </form>
+
+        <div className="mt-5 text-[13px] text-neutral-500">
+          {isRegister ? (
+            <>
+              Already set up?{" "}
+              <Link href="/login" className="text-[#3f7a3f] font-medium hover:underline">
+                Sign in
+              </Link>
+            </>
+          ) : (
+            <>
+              New here?{" "}
+              <Link href="/register" className="text-[#3f7a3f] font-medium hover:underline">
+                Create an account
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
