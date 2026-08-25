@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUser } from "@/lib/auth";
+import { farmAccessWhere } from "@/lib/access";
 
 const clean = (v: unknown, max = 200) =>
   (typeof v === "string" ? v : "").trim().slice(0, max);
@@ -10,7 +11,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const farms = await prisma.farm.findMany({
-    where: { userId: user.id },
+    where: farmAccessWhere(user.id),
     orderBy: { createdAt: "asc" },
     include: { fields: true },
   });

@@ -56,11 +56,19 @@ export type Field = {
   weeds: WeedPin[];
 };
 
+export type TeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: string; // owner, manager, scout, member
+};
+
 export type Farm = {
   id: string;
   name: string;
   location: string | null;
   fields: Field[];
+  team: TeamMember[];
 };
 
 export type SessionUser = { id: string; name: string; email: string };

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUser } from "@/lib/auth";
+import { farmAccessWhere } from "@/lib/access";
 import { ringAreaAcres, ringCentroid } from "@/lib/geo";
 
 const clean = (v: unknown, max = 200) =>
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
   if (!ring) return NextResponse.json({ error: "Draw a valid boundary." }, { status: 400 });
 
   // Ownership: the farm must belong to the signed-in user.
-  const farm = await prisma.farm.findFirst({ where: { id: farmId, userId: user.id } });
+  const farm = await prisma.farm.findFirst({ where: { id: farmId, ...farmAccessWhere(user.id) } });
   if (!farm) return NextResponse.json({ error: "Farm not found." }, { status: 404 });
 
   const center = ringCentroid(ring);

@@ -28,13 +28,29 @@ model Signup {
 /* ------------------------------------------------------------------ */
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String       @id @default(cuid())
+  email        String       @unique
   name         String
   passwordHash String
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime     @default(now())
   sessions     Session[]
   farms        Farm[]
+  memberships  FarmMember[]
+}
+
+/* A person on a farm's team. The owner is the farm's creator (Farm.userId);
+   members are collaborators who can see and work the same farm. */
+model FarmMember {
+  id        String   @id @default(cuid())
+  farmId    String
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member") // manager, scout, member
+  createdAt DateTime @default(now())
+
+  @@unique([farmId, userId])
+  @@index([userId])
 }
 
 model Session {
@@ -56,6 +72,7 @@ model Farm {
   location  String?
   createdAt DateTime @default(now())
   fields    Field[]
+  members   FarmMember[]
 
   @@index([userId])
 }

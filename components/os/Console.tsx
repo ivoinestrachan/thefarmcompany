@@ -31,6 +31,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const [pendingSoil, setPendingSoil] = useState<{ lng: number; lat: number } | null>(null);
   const [pendingWeed, setPendingWeed] = useState<{ lng: number; lat: number } | null>(null);
   const [show3D, setShow3D] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
 
   const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
   const fields = activeFarm?.fields ?? [];
@@ -111,6 +112,24 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           >
             + New farm
           </button>
+
+          {activeFarm && (
+            <button
+              onClick={() => setShowTeam(true)}
+              className="mt-2 w-full flex items-center gap-2 px-2 h-9 rounded-lg hover:bg-neutral-50"
+              title="Manage team"
+            >
+              <div className="flex -space-x-1.5">
+                {activeFarm.team.slice(0, 4).map((m) => (
+                  <Avatar key={m.id} name={m.name} size={22} ring />
+                ))}
+              </div>
+              <span className="text-[12px] text-neutral-500">
+                {activeFarm.team.length} {activeFarm.team.length === 1 ? "member" : "members"}
+              </span>
+              <span className="ml-auto text-[12px] text-[#3f7a3f] font-medium">Team</span>
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 py-3">
@@ -476,7 +495,135 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
       {show3D && selectedField && (
         <PlotScene3D field={selectedField} onClose={() => setShow3D(false)} />
       )}
+
+      {showTeam && activeFarm && (
+        <TeamModal
+          farm={activeFarm}
+          meId={user.id}
+          onClose={() => setShowTeam(false)}
+          onInvite={async (email, role) => {
+            const res = await fetch(`/api/farms/${activeFarm.id}/members`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, role }),
+            });
+            const data = await res.json();
+            if (res.ok) router.refresh();
+            return data.error as string | undefined;
+          }}
+          onRemove={async (memberUserId) => {
+            await fetch(`/api/farms/${activeFarm.id}/members?userId=${memberUserId}`, {
+              method: "DELETE",
+            });
+            router.refresh();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** Deterministic avatar: initials on a colour hashed from the name. */
+function Avatar({ name, size = 28, ring }: { name: string; size?: number; ring?: boolean }) {
+  const colors = ["#3f7a3f", "#c8663a", "#7fb2cf", "#9b7fcf", "#d19a66", "#c94f7c", "#4fd0a0"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const bg = colors[h % colors.length];
+  return (
+    <span
+      className={`grid place-items-center rounded-full text-white font-semibold ${ring ? "ring-2 ring-white" : ""}`}
+      style={{ width: size, height: size, background: bg, fontSize: size * 0.42 }}
+    >
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+function TeamModal({
+  farm,
+  meId,
+  onClose,
+  onInvite,
+  onRemove,
+}: {
+  farm: Farm;
+  meId: string;
+  onClose: () => void;
+  onInvite: (email: string, role: string) => Promise<string | undefined>;
+  onRemove: (userId: string) => Promise<void>;
+}) {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("member");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <Shell onClose={onClose}>
+      <h2 className="text-[19px] font-semibold tracking-tight">Team · {farm.name}</h2>
+      <p className="text-[13px] text-neutral-500 mt-1">Everyone here can see and work this farm.</p>
+
+      <ul className="mt-4 space-y-1.5 max-h-[240px] overflow-y-auto">
+        {farm.team.map((m) => (
+          <li key={m.id} className="flex items-center gap-2.5 rounded-lg bg-neutral-50 px-3 py-2">
+            <Avatar name={m.name} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13.5px] font-medium truncate">
+                {m.name} {m.id === meId && <span className="text-neutral-400 font-normal">(you)</span>}
+              </div>
+              <div className="text-[11.5px] text-neutral-400 truncate">{m.email}</div>
+            </div>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-white text-neutral-500 ring-1 ring-neutral-200 capitalize">
+              {m.role}
+            </span>
+            {m.role !== "owner" && (
+              <button
+                onClick={() => onRemove(m.id)}
+                className="text-[11.5px] text-neutral-400 hover:text-red-600"
+                title="Remove"
+              >
+                ✕
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-4 border-t border-neutral-100 pt-4">
+        <label className="text-[12px] font-medium text-neutral-600">Invite a teammate</label>
+        <div className="mt-1.5 flex gap-2">
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="their@email.com"
+            className="flex-1 h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]"
+          />
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="h-10 rounded-lg border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#3f7a3f]"
+          >
+            {["member", "scout", "manager"].map((r) => (
+              <option key={r} value={r} className="capitalize">{r}</option>
+            ))}
+          </select>
+        </div>
+        {error && <p className="mt-2 text-[12.5px] text-red-600">{error}</p>}
+        <button
+          disabled={!email || busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            const err = await onInvite(email, role);
+            if (err) setError(err);
+            else setEmail("");
+            setBusy(false);
+          }}
+          className="mt-2 w-full h-10 rounded-lg bg-[#3f7a3f] text-white text-[14px] font-medium disabled:opacity-50"
+        >
+          {busy ? "Adding…" : "Add to team"}
+        </button>
+      </div>
+    </Shell>
   );
 }
 

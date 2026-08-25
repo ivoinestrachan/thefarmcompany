@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUser } from "@/lib/auth";
+import { farmAccessWhere } from "@/lib/access";
 
 /* The worm mission file: a plot's operating geofence plus the weed waypoints
    to service, ranked by density. This is the literal interface the Wiggler
@@ -11,7 +12,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const { id } = await ctx.params;
   const field = await prisma.field.findFirst({
-    where: { id, farm: { userId: user.id } },
+    where: { id, farm: farmAccessWhere(user.id) },
     include: {
       farm: true,
       plantings: { where: { status: "growing" }, orderBy: { createdAt: "desc" }, take: 1 },

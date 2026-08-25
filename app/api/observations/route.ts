@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUser } from "@/lib/auth";
+import { farmAccessWhere } from "@/lib/access";
 
 const clean = (v: unknown, max = 200) =>
   (typeof v === "string" ? v : "").trim().slice(0, max);
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid location." }, { status: 400 });
 
   const field = await prisma.field.findFirst({
-    where: { id: fieldId, farm: { userId: user.id } },
+    where: { id: fieldId, farm: farmAccessWhere(user.id) },
   });
   if (!field) return NextResponse.json({ error: "Field not found." }, { status: 404 });
 

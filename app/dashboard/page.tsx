@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getUser } from "@/lib/auth";
+import { farmAccessWhere } from "@/lib/access";
 import Console from "@/components/os/Console";
 import type { Farm } from "@/components/os/types";
 
@@ -11,9 +12,11 @@ export default async function OsPage() {
   if (!user) redirect("/login");
 
   const farms = await prisma.farm.findMany({
-    where: { userId: user.id },
+    where: farmAccessWhere(user.id),
     orderBy: { createdAt: "asc" },
     include: {
+      user: true,
+      members: { include: { user: true }, orderBy: { createdAt: "asc" } },
       fields: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -31,6 +34,15 @@ export default async function OsPage() {
     id: f.id,
     name: f.name,
     location: f.location,
+    team: [
+      { id: f.user.id, name: f.user.name, email: f.user.email, role: "owner" },
+      ...f.members.map((m) => ({
+        id: m.user.id,
+        name: m.user.name,
+        email: m.user.email,
+        role: m.role,
+      })),
+    ],
     fields: f.fields.map((fl) => ({
       id: fl.id,
       name: fl.name,
