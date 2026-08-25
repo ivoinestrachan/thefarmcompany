@@ -161,8 +161,9 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: SATELLITE_STYLE,
-      center: [-98.5, 39.8],
-      zoom: 3.5,
+      // Milliken Reservoir seismic station, Napa — City of Napa land.
+      center: [-122.24, 38.38],
+      zoom: 13.5,
       attributionControl: { compact: true },
     });
     mapRef.current = map;
