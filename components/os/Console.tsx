@@ -78,6 +78,24 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   );
   const avgHealth = stats.healthCount ? stats.healthSum / stats.healthCount : null;
   const legend = cropLegend(fields);
+
+  // Plain-language health so a farmer reads a word, not a number out of 5.
+  const healthWord =
+    avgHealth == null ? "—"
+    : avgHealth >= 4 ? "Healthy"
+    : avgHealth >= 3 ? "Okay"
+    : avgHealth >= 2 ? "Fair"
+    : "Poor";
+  const healthTone: "good" | "warn" | "bad" | undefined =
+    avgHealth == null ? undefined : avgHealth >= 4 ? "good" : avgHealth >= 2.5 ? "warn" : "bad";
+
+  // A friendly one-line summary of how the farm is doing right now.
+  const summary =
+    fields.length === 0
+      ? "Add your first field to get started."
+      : `${avgHealth == null ? "No crop checks yet" : `Crops look ${healthWord.toLowerCase()}`} · ${
+          stats.weedHot > 0 ? `${stats.weedHot} weed spot${stats.weedHot === 1 ? "" : "s"} to clear` : "no weeds flagged"
+        } · ${stats.soil > 0 ? `${stats.soil} soil test${stats.soil === 1 ? "" : "s"} logged` : "no soil tests yet"}`;
   function cancelMode() {
     mapRef.current?.cancelDraw();
     setMode("view");
@@ -121,12 +139,12 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
         <div className="flex-1 overflow-y-auto px-2 py-3">
           <div className="flex items-center justify-between px-3 mb-1">
             <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-              Plots · {fields.length}
+              Fields · {fields.length}
             </span>
           </div>
           {fields.length === 0 && (
             <p className="px-3 py-4 text-[12.5px] text-neutral-400 leading-relaxed">
-              No plots yet. Hit <span className="font-medium">Add plot</span> and draw your
+              No fields yet. Hit <span className="font-medium">+ Add field</span> and draw the
               boundary on the map.
             </p>
           )}
@@ -201,44 +219,52 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               disabled={!selectedField || mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40"
             >
-              Mark weed
+              Add weed
             </button>
             <button
               onClick={startSoil}
               disabled={!selectedField || mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40"
             >
-              Soil sample
+              Soil test
             </button>
             <button
               onClick={startScout}
               disabled={!selectedField || mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40"
             >
-              Scout crop
+              Add note
             </button>
             <button
               onClick={startDraw}
               disabled={mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium bg-[#3f7a3f] text-white hover:bg-[#356b35] disabled:opacity-50"
             >
-              + Add plot
+              + Add field
             </button>
           </div>
         </header>
 
-        {/* Farm overview strip */}
-        <div className="shrink-0 flex items-stretch gap-px bg-neutral-200 border-b border-neutral-200 text-center">
-          <StatCell label="Plots" value={String(fields.length)} />
-          <StatCell label="Acres" value={stats.acres.toFixed(1)} />
-          <StatCell
-            label="Avg health"
-            value={avgHealth ? `${avgHealth.toFixed(1)}/5` : "—"}
-            tone={avgHealth ? (avgHealth >= 4 ? "good" : avgHealth >= 2.5 ? "warn" : "bad") : undefined}
+        {/* Friendly one-line summary */}
+        <div className="shrink-0 flex items-center gap-2 px-5 h-9 border-b border-neutral-100 bg-white text-[12.5px]">
+          <span
+            className={`h-2 w-2 rounded-full ${
+              healthTone === "good" ? "bg-[#3f7a3f]" : healthTone === "warn" ? "bg-[#b8860b]" : healthTone === "bad" ? "bg-[#c0392b]" : "bg-neutral-300"
+            }`}
           />
-          <StatCell label="Weed targets" value={String(stats.weedHot)} tone={stats.weedHot ? "bad" : undefined} />
-          <StatCell label="Scout points" value={String(stats.scouts)} />
-          <StatCell label="Soil samples" value={String(stats.soil)} />
+          <span className="text-neutral-600">
+            <span className="font-medium text-neutral-800">Right now:</span> {summary}
+          </span>
+        </div>
+
+        {/* Farm overview strip — plain words a farmer uses */}
+        <div className="shrink-0 flex items-stretch gap-px bg-neutral-200 border-b border-neutral-200 text-center">
+          <StatCell label="Fields" value={String(fields.length)} />
+          <StatCell label="Acres" value={stats.acres.toFixed(0)} />
+          <StatCell label="Crop health" value={healthWord} tone={healthTone} />
+          <StatCell label="Weeds to clear" value={String(stats.weedHot)} tone={stats.weedHot ? "bad" : undefined} />
+          <StatCell label="Notes & photos" value={String(stats.scouts)} />
+          <StatCell label="Soil tests" value={String(stats.soil)} />
         </div>
 
         {/* Map + panel */}
@@ -274,19 +300,19 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg bg-white/95 backdrop-blur px-3 py-2.5 shadow-lg ring-1 ring-black/5">
               <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">Layers</span>
               <LayerToggle
-                label="Crop scouting"
+                label="Notes & photos"
                 dot="#4fd06a"
                 on={layers.scouts}
                 onClick={() => setLayers((l) => ({ ...l, scouts: !l.scouts }))}
               />
               <LayerToggle
-                label="Soil samples"
+                label="Soil tests"
                 dot="#4f9dd0"
                 on={layers.soil}
                 onClick={() => setLayers((l) => ({ ...l, soil: !l.soil }))}
               />
               <LayerToggle
-                label="Weed targets"
+                label="Weeds"
                 dot="#e5443c"
                 on={layers.weeds}
                 onClick={() => setLayers((l) => ({ ...l, weeds: !l.weeds }))}
@@ -307,13 +333,13 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             />
           )}
           {mode === "scout" && (
-            <ModeBar text="Click the exact spot in the field you're scouting." onCancel={cancelMode} />
+            <ModeBar text="Tap the spot you want to note — then add a photo." onCancel={cancelMode} />
           )}
           {mode === "soil" && (
-            <ModeBar text="Click where you pulled the soil sample." onCancel={cancelMode} />
+            <ModeBar text="Tap where you took the soil test." onCancel={cancelMode} />
           )}
           {mode === "weed" && (
-            <ModeBar text="Click each weed patch — these become the worm's targets." onCancel={cancelMode} />
+            <ModeBar text="Tap each spot where weeds are a problem." onCancel={cancelMode} />
           )}
 
           {/* Field detail panel */}
@@ -585,7 +611,7 @@ function FarmPicker({
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13.5px] font-medium truncate">{f.name}</span>
                       <span className="block text-[11px] text-neutral-400 truncate">
-                        {f.fields.length} plots · {acresOf(f).toFixed(0)} ac
+                        {f.fields.length} fields · {acresOf(f).toFixed(0)} ac
                       </span>
                     </span>
                     {active && <span className="text-[#3f7a3f] text-[13px]">✓</span>}
@@ -808,7 +834,6 @@ function FieldPanel({
   onToggleWeed: (id: string, status: string) => Promise<void>;
   onAddPlanting: (p: { crop: string; variety: string; plantedOn: string; status: string }) => Promise<void>;
 }) {
-  const activeWeeds = field.weeds.filter((w) => w.status === "active").length;
   const [crop, setCrop] = useState("");
   const [variety, setVariety] = useState("");
   const [plantedOn, setPlantedOn] = useState("");
@@ -837,52 +862,42 @@ function FieldPanel({
         <Stat label="Plantings" value={String(field.plantings.length)} />
         <Stat
           label="Crop health"
-          value={avgHealth ? `${avgHealth.toFixed(1)}/5` : "—"}
+          value={avgHealth == null ? "—" : avgHealth >= 4 ? "Healthy" : avgHealth >= 3 ? "Okay" : avgHealth >= 2 ? "Fair" : "Poor"}
           tone={avgHealth ? (avgHealth >= 4 ? "good" : avgHealth >= 2.5 ? "warn" : "bad") : undefined}
         />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
-        {/* Worm mission */}
-        <section className="rounded-lg bg-[#f3f6f1] ring-1 ring-[#3f7a3f]/15 p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[12.5px] font-semibold text-[#2f5a2f]">Worm mission</div>
-              <div className="text-[11.5px] text-neutral-500">
-                {activeWeeds} target{activeWeeds === 1 ? "" : "s"} · geofenced route
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={onGlobe}
-                className="h-8 px-3 rounded-lg bg-[#2f5a2f] text-white text-[12.5px] font-medium hover:bg-[#274c27]"
-                title="Photoreal 3D (Google Tiles)"
-              >
-                Photoreal 3D
-              </button>
-              <a
-                href={`/api/fields/${field.id}/mission`}
-                className="h-8 px-3 grid place-items-center rounded-lg bg-white ring-1 ring-neutral-200 text-neutral-600 text-[12.5px] font-medium hover:bg-neutral-50"
-              >
-                Export
-              </a>
-            </div>
-          </div>
+        {/* Field actions — plain language */}
+        <section className="flex items-center gap-2">
+          <button
+            onClick={onGlobe}
+            className="flex-1 h-10 rounded-lg bg-[#2f5a2f] text-white text-[13px] font-medium hover:bg-[#274c27]"
+          >
+            See this field in 3D
+          </button>
+          <a
+            href={`/api/fields/${field.id}/mission`}
+            title="Download this field's weed map for your robot"
+            className="h-10 px-3 grid place-items-center rounded-lg bg-white ring-1 ring-neutral-200 text-neutral-600 text-[13px] font-medium hover:bg-neutral-50"
+          >
+            Robot map
+          </a>
         </section>
 
         {/* Weed targets */}
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-              Weed targets · {field.weeds.length}
+              Weeds · {field.weeds.length}
             </h3>
             <button onClick={onWeed} className="text-[12px] text-[#c0392b] font-medium">
-              + Mark weed
+              + Add weed
             </button>
           </div>
           {field.weeds.length === 0 && (
             <p className="text-[12.5px] text-neutral-400">
-              No weeds marked. Drop a pin on each patch — these become the worm&apos;s targets.
+              No weeds marked yet. Tap a spot on the map wherever weeds are a problem.
             </p>
           )}
           <ul className="space-y-1.5">
@@ -973,15 +988,15 @@ function FieldPanel({
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-              Scouting log · {field.scouts.length}
+              Notes &amp; photos · {field.scouts.length}
             </h3>
             <button onClick={onScout} className="text-[12px] text-[#3f7a3f] font-medium">
-              + Scout
+              + Add note
             </button>
           </div>
           {field.scouts.length === 0 && (
             <p className="text-[12.5px] text-neutral-400">
-              No scouting yet. Walk the field, drop a point, snap a photo.
+              Walk the field and drop a note with a photo wherever something stands out.
             </p>
           )}
           <ul className="space-y-2">
@@ -1013,15 +1028,15 @@ function FieldPanel({
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-              Soil samples · {field.soil.length}
+              Soil tests · {field.soil.length}
             </h3>
             <button onClick={onSoil} className="text-[12px] text-[#3f7a3f] font-medium">
-              + Sample
+              + Add test
             </button>
           </div>
           {field.soil.length === 0 && (
             <p className="text-[12.5px] text-neutral-400">
-              No soil readings yet. Drop a sample point to log moisture, pH and nutrients.
+              No soil tests yet. Drop a point to record moisture, pH and nutrients.
             </p>
           )}
           <ul className="space-y-1.5">
@@ -1180,14 +1195,14 @@ function NewFieldModal({
 
   return (
     <Shell onClose={onClose}>
-      <h2 className="text-[19px] font-semibold tracking-tight">Name this plot</h2>
+      <h2 className="text-[19px] font-semibold tracking-tight">Name this field</h2>
       <p className="text-[13px] text-neutral-500 mt-1">{areaAcres.toFixed(2)} acres drawn.</p>
       <div className="mt-4 space-y-2.5">
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Plot name — e.g. North Plot"
+          placeholder="Field name — e.g. North Block"
           className="w-full h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]"
         />
         <input
@@ -1215,7 +1230,7 @@ function NewFieldModal({
           }}
           className="w-full h-10 rounded-lg bg-[#3f7a3f] text-white text-[14px] font-medium disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save plot"}
+          {busy ? "Saving…" : "Save field"}
         </button>
       </div>
     </Shell>
@@ -1423,7 +1438,7 @@ function WeedModal({
   return (
     <Shell onClose={onClose}>
       <h2 className="text-[19px] font-semibold tracking-tight">Mark a weed patch</h2>
-      <p className="text-[13px] text-neutral-500 mt-1">This becomes a target the worm will service.</p>
+      <p className="text-[13px] text-neutral-500 mt-1">Mark where weeds are a problem so you can clear them.</p>
 
       <div className="mt-4 space-y-4">
         <div>
@@ -1469,7 +1484,7 @@ function WeedModal({
           }}
           className="w-full h-10 rounded-lg bg-[#c0392b] text-white text-[14px] font-medium disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Mark weed target"}
+          {busy ? "Saving…" : "Save weed spot"}
         </button>
       </div>
     </Shell>
