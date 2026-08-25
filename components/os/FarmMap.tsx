@@ -257,7 +257,7 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
     (map.getSource("scouts") as maplibregl.GeoJSONSource | undefined)?.setData(scoutsToGeoJSON(fields));
   }, [fields, selectedFieldId]);
 
-  return <div ref={containerRef} className="absolute inset-0" />;
+  return <div ref={containerRef} className="h-full w-full" />;
 });
 
 export default FarmMap;
