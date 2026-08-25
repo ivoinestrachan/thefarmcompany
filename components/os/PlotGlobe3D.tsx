@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import {
@@ -29,9 +29,39 @@ function enuOffset(lng: number, lat: number, cLng: number, cLat: number): [numbe
   return [east, north];
 }
 
-export default function PlotGlobe3D({ field, onClose }: { field: Field; onClose: () => void }) {
+export default function PlotGlobe3D({
+  field,
+  onClose,
+  onSaveShape,
+}: {
+  field: Field;
+  onClose: () => void;
+  onSaveShape?: (ring: number[][]) => Promise<string | undefined>;
+}) {
   const cLat = field.centerLat;
   const cLng = field.centerLng;
+
+  const [drawing, setDrawing] = useState(false);
+  const [draftWorld, setDraftWorld] = useState<THREE.Vector3[]>([]);
+  const [draftLL, setDraftLL] = useState<number[][]>([]);
+  const [saving, setSaving] = useState(false);
+
+  const addPoint = useCallback((world: THREE.Vector3, lng: number, lat: number) => {
+    setDraftWorld((a) => [...a, world]);
+    setDraftLL((a) => [...a, [lng, lat]]);
+  }, []);
+  const resetDraw = useCallback(() => {
+    setDraftWorld([]);
+    setDraftLL([]);
+    setDrawing(false);
+  }, []);
+  async function finishDraw() {
+    if (draftLL.length < 3 || !onSaveShape) return resetDraw();
+    setSaving(true);
+    await onSaveShape([...draftLL, draftLL[0]]);
+    setSaving(false);
+    resetDraw();
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black">
@@ -39,15 +69,44 @@ export default function PlotGlobe3D({ field, onClose }: { field: Field; onClose:
         <div>
           <div className="text-[15px] font-semibold tracking-tight">{field.name} · Photoreal</div>
           <div className="text-[11.5px] text-white/60">
-            Google Photorealistic 3D Tiles · drag to orbit, scroll to fly in
+            {drawing
+              ? `Click the ground to trace a plot — ${draftLL.length} point${draftLL.length === 1 ? "" : "s"}`
+              : "Google Photorealistic 3D Tiles · drag to orbit, scroll to fly in"}
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="h-9 px-4 rounded-lg bg-white/15 hover:bg-white/25 text-[13px] font-medium backdrop-blur"
-        >
-          Close
-        </button>
+        <div className="flex items-center gap-2">
+          {KEY && onSaveShape && !drawing && (
+            <button
+              onClick={() => setDrawing(true)}
+              className="h-9 px-4 rounded-lg bg-[#3f7a3f] hover:bg-[#356b35] text-[13px] font-medium"
+            >
+              ✏️ Draw plot
+            </button>
+          )}
+          {drawing && (
+            <>
+              <button
+                onClick={finishDraw}
+                disabled={draftLL.length < 3 || saving}
+                className="h-9 px-4 rounded-lg bg-[#3f7a3f] hover:bg-[#356b35] text-[13px] font-medium disabled:opacity-40"
+              >
+                {saving ? "Saving…" : "Finish plot"}
+              </button>
+              <button
+                onClick={resetDraw}
+                className="h-9 px-4 rounded-lg bg-white/15 hover:bg-white/25 text-[13px] font-medium backdrop-blur"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+          <button
+            onClick={onClose}
+            className="h-9 px-4 rounded-lg bg-white/15 hover:bg-white/25 text-[13px] font-medium backdrop-blur"
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       {!KEY ? (
@@ -63,8 +122,12 @@ export default function PlotGlobe3D({ field, onClose }: { field: Field; onClose:
             </EastNorthUpFrame>
 
             <FocusCamera lat={cLat} lon={cLng} />
+            <DrawController active={drawing} onPoint={addPoint} />
             <GlobeControls />
           </TilesRenderer>
+
+          <DraftShape points={draftWorld} />
+
           <ambientLight intensity={1} />
           <directionalLight position={[1, 2, 1]} intensity={1.2} />
         </Canvas>
@@ -126,15 +189,82 @@ function FocusCamera({ lat, lon }: { lat: number; lon: number }) {
     const ell = tiles.ellipsoid;
     const eye = new THREE.Vector3();
     const target = new THREE.Vector3();
-    // 600 m up and slightly south for an oblique, street-view-ish angle.
-    ell.getCartographicToPosition(lat * D2R, lon * D2R, 600, eye);
-    ell.getCartographicToPosition(lat * D2R, lon * D2R, 0, target);
+    // Eye offset SOUTH of the plot and up, so we look north at an oblique
+    // ~40° tilt — a 3D, near-street-level view rather than straight down.
+    const southOffsetM = 700;
+    const dLat = southOffsetM / 111320;
+    ell.getCartographicToPosition((lat - dLat) * D2R, lon * D2R, 500, eye);
+    ell.getCartographicToPosition(lat * D2R, lon * D2R, 20, target);
     camera.position.copy(eye);
-    camera.up.copy(eye).normalize();
+    camera.up.copy(eye).normalize(); // geodetic up ≈ surface normal on the globe
     camera.lookAt(target);
     camera.updateMatrixWorld();
   }, [tiles, lat, lon, camera]);
   return null;
+}
+
+/** Raycasts clicks onto the Google 3D mesh and converts hits to real lng/lat. */
+function DrawController({
+  active,
+  onPoint,
+}: {
+  active: boolean;
+  onPoint: (world: THREE.Vector3, lng: number, lat: number) => void;
+}) {
+  const tiles = useContext(TilesRendererContext);
+  const { camera, gl, raycaster } = useThree();
+
+  useEffect(() => {
+    if (!active || !tiles) return;
+    const el = gl.domElement;
+    const invGroup = new THREE.Matrix4();
+    const ndc = new THREE.Vector2();
+
+    const onClick = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      ndc.set(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObject(tiles.group, true);
+      if (!hits.length) return;
+      const world = hits[0].point.clone();
+      // world → tile-local (ECEF) → geographic
+      invGroup.copy(tiles.group.matrixWorld).invert();
+      const ecef = world.clone().applyMatrix4(invGroup);
+      const carto = { lat: 0, lon: 0, height: 0 };
+      tiles.ellipsoid.getPositionToCartographic(ecef, carto);
+      onPoint(world, (carto.lon * 180) / Math.PI, (carto.lat * 180) / Math.PI);
+    };
+
+    el.addEventListener("click", onClick);
+    return () => el.removeEventListener("click", onClick);
+  }, [active, tiles, camera, gl, raycaster, onPoint]);
+
+  return null;
+}
+
+/** The in-progress traced outline drawn in world space. */
+function DraftShape({ points }: { points: THREE.Vector3[] }) {
+  const line = useMemo(() => {
+    if (points.length < 2) return null;
+    return new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: "#7ee081" })
+    );
+  }, [points]);
+  return (
+    <group>
+      {line && <primitive object={line} />}
+      {points.map((p, i) => (
+        <mesh key={i} position={p}>
+          <sphereGeometry args={[2.5, 12, 12]} />
+          <meshBasicMaterial color="#7ee081" />
+        </mesh>
+      ))}
+    </group>
+  );
 }
 
 function SetupFallback() {

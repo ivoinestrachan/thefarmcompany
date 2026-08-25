@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import FarmMap, { type FarmMapHandle } from "./FarmMap";
 
-// three.js can't render on the server — load the 3D views client-side only.
-const PlotScene3D = dynamic(() => import("./PlotScene3D"), { ssr: false });
+// three.js can't render on the server — load the 3D view client-side only.
 const PlotGlobe3D = dynamic(() => import("./PlotGlobe3D"), { ssr: false });
 import { ringAreaAcres } from "@/lib/geo";
 import { primaryCrop, cropColor, cropLegend, NO_CROP_COLOR } from "@/lib/crops";
@@ -31,7 +30,6 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const [pendingScout, setPendingScout] = useState<{ lng: number; lat: number } | null>(null);
   const [pendingSoil, setPendingSoil] = useState<{ lng: number; lat: number } | null>(null);
   const [pendingWeed, setPendingWeed] = useState<{ lng: number; lat: number } | null>(null);
-  const [show3D, setShow3D] = useState(false);
   const [showGlobe, setShowGlobe] = useState(false);
   const [showTeam, setShowTeam] = useState(false);
 
@@ -326,7 +324,6 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               onScout={startScout}
               onSoil={startSoil}
               onWeed={startWeed}
-              onView3D={() => setShow3D(true)}
               onGlobe={() => setShowGlobe(true)}
               onToggleWeed={async (id, status) => {
                 await fetch("/api/weeds", {
@@ -481,12 +478,26 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
         />
       )}
 
-      {show3D && selectedField && (
-        <PlotScene3D field={selectedField} onClose={() => setShow3D(false)} />
-      )}
-
-      {showGlobe && selectedField && (
-        <PlotGlobe3D field={selectedField} onClose={() => setShowGlobe(false)} />
+      {showGlobe && selectedField && activeFarm && (
+        <PlotGlobe3D
+          field={selectedField}
+          onClose={() => setShowGlobe(false)}
+          onSaveShape={async (ring) => {
+            const res = await fetch("/api/fields", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: `Plot ${activeFarm.fields.length + 1}`,
+                landType: "Field",
+                farmId: activeFarm.id,
+                geometry: { type: "Polygon", coordinates: [ring] },
+              }),
+            });
+            const data = await res.json();
+            if (res.ok) router.refresh();
+            return data.error as string | undefined;
+          }}
+        />
       )}
 
       {showTeam && activeFarm && (
@@ -784,7 +795,6 @@ function FieldPanel({
   onScout,
   onSoil,
   onWeed,
-  onView3D,
   onGlobe,
   onToggleWeed,
   onAddPlanting,
@@ -794,7 +804,6 @@ function FieldPanel({
   onScout: () => void;
   onSoil: () => void;
   onWeed: () => void;
-  onView3D: () => void;
   onGlobe: () => void;
   onToggleWeed: (id: string, status: string) => Promise<void>;
   onAddPlanting: (p: { crop: string; variety: string; plantedOn: string; status: string }) => Promise<void>;
@@ -849,13 +858,7 @@ function FieldPanel({
                 className="h-8 px-3 rounded-lg bg-[#2f5a2f] text-white text-[12.5px] font-medium hover:bg-[#274c27]"
                 title="Photoreal 3D (Google Tiles)"
               >
-                Photoreal
-              </button>
-              <button
-                onClick={onView3D}
-                className="h-8 px-3 rounded-lg bg-white ring-1 ring-[#3f7a3f]/25 text-[#2f5a2f] text-[12.5px] font-medium hover:bg-[#eef4ee]"
-              >
-                Cutaway
+                Photoreal 3D
               </button>
               <a
                 href={`/api/fields/${field.id}/mission`}
