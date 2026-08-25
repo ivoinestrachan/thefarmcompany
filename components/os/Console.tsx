@@ -2,7 +2,11 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import FarmMap, { type FarmMapHandle } from "./FarmMap";
+
+// three.js can't render on the server — load the 3D view client-side only.
+const PlotScene3D = dynamic(() => import("./PlotScene3D"), { ssr: false });
 import { ringAreaAcres } from "@/lib/geo";
 import { primaryCrop, cropColor, cropLegend, NO_CROP_COLOR } from "@/lib/crops";
 import type { Farm, Field, SessionUser } from "./types";
@@ -26,6 +30,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const [pendingScout, setPendingScout] = useState<{ lng: number; lat: number } | null>(null);
   const [pendingSoil, setPendingSoil] = useState<{ lng: number; lat: number } | null>(null);
   const [pendingWeed, setPendingWeed] = useState<{ lng: number; lat: number } | null>(null);
+  const [show3D, setShow3D] = useState(false);
 
   const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
   const fields = activeFarm?.fields ?? [];
@@ -314,6 +319,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               onScout={startScout}
               onSoil={startSoil}
               onWeed={startWeed}
+              onView3D={() => setShow3D(true)}
               onToggleWeed={async (id, status) => {
                 await fetch("/api/weeds", {
                   method: "PATCH",
@@ -445,6 +451,10 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           }}
         />
       )}
+
+      {show3D && selectedField && (
+        <PlotScene3D field={selectedField} onClose={() => setShow3D(false)} />
+      )}
     </div>
   );
 }
@@ -531,6 +541,7 @@ function FieldPanel({
   onScout,
   onSoil,
   onWeed,
+  onView3D,
   onToggleWeed,
   onAddPlanting,
 }: {
@@ -539,6 +550,7 @@ function FieldPanel({
   onScout: () => void;
   onSoil: () => void;
   onWeed: () => void;
+  onView3D: () => void;
   onToggleWeed: (id: string, status: string) => Promise<void>;
   onAddPlanting: (p: { crop: string; variety: string; plantedOn: string; status: string }) => Promise<void>;
 }) {
@@ -586,12 +598,20 @@ function FieldPanel({
                 {activeWeeds} target{activeWeeds === 1 ? "" : "s"} · geofenced route
               </div>
             </div>
-            <a
-              href={`/api/fields/${field.id}/mission`}
-              className="h-8 px-3 grid place-items-center rounded-lg bg-[#3f7a3f] text-white text-[12.5px] font-medium hover:bg-[#356b35]"
-            >
-              Export
-            </a>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={onView3D}
+                className="h-8 px-3 rounded-lg bg-white ring-1 ring-[#3f7a3f]/25 text-[#2f5a2f] text-[12.5px] font-medium hover:bg-[#eef4ee]"
+              >
+                3D view
+              </button>
+              <a
+                href={`/api/fields/${field.id}/mission`}
+                className="h-8 px-3 grid place-items-center rounded-lg bg-[#3f7a3f] text-white text-[12.5px] font-medium hover:bg-[#356b35]"
+              >
+                Export
+              </a>
+            </div>
           </div>
         </section>
 
