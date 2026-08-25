@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import FarmMap, { type FarmMapHandle } from "./FarmMap";
 
-// three.js can't render on the server — load the 3D view client-side only.
+// three.js can't render on the server — load the 3D views client-side only.
 const PlotScene3D = dynamic(() => import("./PlotScene3D"), { ssr: false });
+const PlotGlobe3D = dynamic(() => import("./PlotGlobe3D"), { ssr: false });
 import { ringAreaAcres } from "@/lib/geo";
 import { primaryCrop, cropColor, cropLegend, NO_CROP_COLOR } from "@/lib/crops";
 import type { Farm, Field, SessionUser } from "./types";
@@ -31,6 +32,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const [pendingSoil, setPendingSoil] = useState<{ lng: number; lat: number } | null>(null);
   const [pendingWeed, setPendingWeed] = useState<{ lng: number; lat: number } | null>(null);
   const [show3D, setShow3D] = useState(false);
+  const [showGlobe, setShowGlobe] = useState(false);
   const [showTeam, setShowTeam] = useState(false);
 
   const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
@@ -89,29 +91,15 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
       {/* Sidebar */}
       <aside className="w-[248px] shrink-0 border-r border-neutral-200 bg-white flex flex-col">
         <div className="px-3 py-3 border-b border-neutral-100">
-          <label className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 px-2">
-            Farm
-          </label>
-          <select
-            value={activeFarm?.id ?? ""}
-            onChange={(e) => {
-              setActiveFarmId(e.target.value);
+          <FarmPicker
+            farms={farms}
+            activeFarm={activeFarm}
+            onSelect={(id) => {
+              setActiveFarmId(id);
               setSelectedFieldId(null);
             }}
-            className="mt-1 w-full h-9 rounded-lg border border-neutral-200 bg-neutral-50 px-2 text-[13.5px] outline-none focus:border-[#3f7a3f]"
-          >
-            {farms.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowNewFarm(true)}
-            className="mt-2 w-full h-8 rounded-lg text-[12.5px] text-[#3f7a3f] font-medium hover:bg-[#eef4ee]"
-          >
-            + New farm
-          </button>
+            onNew={() => setShowNewFarm(true)}
+          />
 
           {activeFarm && (
             <button
@@ -339,6 +327,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               onSoil={startSoil}
               onWeed={startWeed}
               onView3D={() => setShow3D(true)}
+              onGlobe={() => setShowGlobe(true)}
               onToggleWeed={async (id, status) => {
                 await fetch("/api/weeds", {
                   method: "PATCH",
@@ -496,6 +485,10 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
         <PlotScene3D field={selectedField} onClose={() => setShow3D(false)} />
       )}
 
+      {showGlobe && selectedField && (
+        <PlotGlobe3D field={selectedField} onClose={() => setShowGlobe(false)} />
+      )}
+
       {showTeam && activeFarm && (
         <TeamModal
           farm={activeFarm}
@@ -518,6 +511,88 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             router.refresh();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function FarmPicker({
+  farms,
+  activeFarm,
+  onSelect,
+  onNew,
+}: {
+  farms: Farm[];
+  activeFarm: Farm | null;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const acresOf = (f: Farm) => f.fields.reduce((a, x) => a + x.areaAcres, 0);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2.5 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left hover:border-neutral-300 transition"
+      >
+        <span className="h-8 w-8 shrink-0 rounded-lg bg-[#3f7a3f] text-white grid place-items-center text-[14px]">🌱</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold tracking-tight truncate">
+            {activeFarm?.name ?? "Select a farm"}
+          </span>
+          <span className="block text-[11px] text-neutral-400 truncate">
+            {activeFarm
+              ? `${activeFarm.location || "—"} · ${acresOf(activeFarm).toFixed(0)} ac`
+              : ""}
+          </span>
+        </span>
+        <svg
+          className={`h-4 w-4 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6"
+        >
+          <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-neutral-200 bg-white shadow-xl p-1.5">
+            <div className="max-h-[280px] overflow-y-auto">
+              {farms.map((f) => {
+                const active = f.id === activeFarm?.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => { onSelect(f.id); setOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition ${
+                      active ? "bg-[#eef4ee]" : "hover:bg-neutral-50"
+                    }`}
+                  >
+                    <span className="h-7 w-7 shrink-0 rounded-lg bg-[#3f7a3f]/10 text-[#3f7a3f] grid place-items-center text-[13px]">🌱</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] font-medium truncate">{f.name}</span>
+                      <span className="block text-[11px] text-neutral-400 truncate">
+                        {f.fields.length} plots · {acresOf(f).toFixed(0)} ac
+                      </span>
+                    </span>
+                    {active && <span className="text-[#3f7a3f] text-[13px]">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="border-t border-neutral-100 mt-1 pt-1">
+              <button
+                onClick={() => { onNew(); setOpen(false); }}
+                className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-[#3f7a3f] hover:bg-[#eef4ee]"
+              >
+                <span className="h-7 w-7 grid place-items-center rounded-lg bg-[#eef4ee] text-[16px]">+</span>
+                New farm
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -710,6 +785,7 @@ function FieldPanel({
   onSoil,
   onWeed,
   onView3D,
+  onGlobe,
   onToggleWeed,
   onAddPlanting,
 }: {
@@ -719,6 +795,7 @@ function FieldPanel({
   onSoil: () => void;
   onWeed: () => void;
   onView3D: () => void;
+  onGlobe: () => void;
   onToggleWeed: (id: string, status: string) => Promise<void>;
   onAddPlanting: (p: { crop: string; variety: string; plantedOn: string; status: string }) => Promise<void>;
 }) {
@@ -768,14 +845,21 @@ function FieldPanel({
             </div>
             <div className="flex items-center gap-1.5">
               <button
+                onClick={onGlobe}
+                className="h-8 px-3 rounded-lg bg-[#2f5a2f] text-white text-[12.5px] font-medium hover:bg-[#274c27]"
+                title="Photoreal 3D (Google Tiles)"
+              >
+                Photoreal
+              </button>
+              <button
                 onClick={onView3D}
                 className="h-8 px-3 rounded-lg bg-white ring-1 ring-[#3f7a3f]/25 text-[#2f5a2f] text-[12.5px] font-medium hover:bg-[#eef4ee]"
               >
-                3D view
+                Cutaway
               </button>
               <a
                 href={`/api/fields/${field.id}/mission`}
-                className="h-8 px-3 grid place-items-center rounded-lg bg-[#3f7a3f] text-white text-[12.5px] font-medium hover:bg-[#356b35]"
+                className="h-8 px-3 grid place-items-center rounded-lg bg-white ring-1 ring-neutral-200 text-neutral-600 text-[12.5px] font-medium hover:bg-neutral-50"
               >
                 Export
               </a>
