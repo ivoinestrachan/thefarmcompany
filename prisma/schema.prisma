@@ -74,6 +74,7 @@ model Field {
   plantings  Planting[]
   scouts     Observation[]
   soil       SoilSample[]
+  weeds      WeedPin[]
 
   @@index([farmId])
 }
@@ -122,6 +123,24 @@ model SoilSample {
   potassium   Float? // ppm
   note        String?
   createdAt   DateTime @default(now())
+
+  @@index([fieldId])
+}
+
+/* A weed hotspot — where the Wiggler goes to work. Each pin is a target
+   waypoint; density sets priority, status tracks whether it's been cleared
+   (by hand today, by the worm tomorrow). */
+model WeedPin {
+  id        String   @id @default(cuid())
+  fieldId   String
+  field     Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  lat       Float
+  lng       Float
+  density   String   @default("medium") // low, medium, high
+  species   String?
+  note      String?
+  status    String   @default("active") // active, cleared
+  createdAt DateTime @default(now())
 
   @@index([fieldId])
 }

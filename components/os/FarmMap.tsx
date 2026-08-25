@@ -17,9 +17,9 @@ export type FarmMapHandle = {
   flyToField: (field: Field) => void;
 };
 
-type Mode = "view" | "draw" | "scout" | "soil";
+type Mode = "view" | "draw" | "scout" | "soil" | "weed";
 
-type LayerToggles = { scouts: boolean; soil: boolean };
+type LayerToggles = { scouts: boolean; soil: boolean; weeds: boolean };
 
 type Props = {
   fields: Field[];
@@ -31,6 +31,7 @@ type Props = {
   onPolygonComplete: (ring: number[][]) => void;
   onScoutPoint: (lng: number, lat: number) => void;
   onSoilPoint: (lng: number, lat: number) => void;
+  onWeedPoint: (lng: number, lat: number) => void;
 };
 
 // Free Esri World Imagery — satellite raster, no API key required.
@@ -88,8 +89,23 @@ const soilToGeoJSON = (fields: Field[]) => ({
   ),
 });
 
+const DENSITY_SIZE: Record<string, number> = { low: 5, medium: 7, high: 9 };
+const weedsToGeoJSON = (fields: Field[]) => ({
+  type: "FeatureCollection" as const,
+  features: fields.flatMap((f) =>
+    f.weeds.map((w) => ({
+      type: "Feature" as const,
+      properties: {
+        size: DENSITY_SIZE[w.density] ?? 7,
+        cleared: w.status === "cleared" ? 1 : 0,
+      },
+      geometry: { type: "Point" as const, coordinates: [w.lng, w.lat] },
+    }))
+  ),
+});
+
 const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
-  { fields, selectedFieldId, mode, layers, onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint },
+  { fields, selectedFieldId, mode, layers, onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -98,9 +114,9 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
   const draftRef = useRef<number[][]>([]);
   // Keep latest props/mode accessible inside stable event handlers.
   const modeRef = useRef(mode);
-  const cbRef = useRef({ onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint });
+  const cbRef = useRef({ onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint });
   modeRef.current = mode;
-  cbRef.current = { onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint };
+  cbRef.current = { onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint };
 
   const renderDraft = () => {
     const map = mapRef.current;
@@ -225,6 +241,21 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         },
       });
 
+      map.addSource("weeds", { type: "geojson", data: weedsToGeoJSON(fields) });
+      map.addLayer({
+        id: "weeds-pt",
+        type: "circle",
+        source: "weeds",
+        paint: {
+          "circle-radius": ["get", "size"],
+          // Active weeds = red target; cleared = muted green.
+          "circle-color": ["case", ["==", ["get", "cleared"], 1], "#6b8f5a", "#e5443c"],
+          "circle-opacity": ["case", ["==", ["get", "cleared"], 1], 0.55, 0.85],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+
       map.addSource("draft", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({
         id: "draft-line",
@@ -260,13 +291,18 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         cbRef.current.onSoilPoint(e.lngLat.lng, e.lngLat.lat);
         return;
       }
+      if (m === "weed") {
+        cbRef.current.onWeedPoint(e.lngLat.lng, e.lngLat.lat);
+        return;
+      }
       const hit = map.queryRenderedFeatures(e.point, { layers: ["fields-fill"] });
       if (hit.length) cbRef.current.onSelectField(hit[0].properties?.id as string);
     });
 
     map.on("mousemove", (e) => {
       const m = modeRef.current;
-      map.getCanvas().style.cursor = m === "draw" || m === "scout" || m === "soil" ? "crosshair" : "";
+      map.getCanvas().style.cursor =
+        m === "draw" || m === "scout" || m === "soil" || m === "weed" ? "crosshair" : "";
       if (m === "view") {
         const hit = map.queryRenderedFeatures(e.point, { layers: ["fields-fill"] });
         map.getCanvas().style.cursor = hit.length ? "pointer" : "";
@@ -303,6 +339,7 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
     );
     (map.getSource("scouts") as maplibregl.GeoJSONSource | undefined)?.setData(scoutsToGeoJSON(fields));
     (map.getSource("soil") as maplibregl.GeoJSONSource | undefined)?.setData(soilToGeoJSON(fields));
+    (map.getSource("weeds") as maplibregl.GeoJSONSource | undefined)?.setData(weedsToGeoJSON(fields));
   }, [fields, selectedFieldId]);
 
   // Toggle layer visibility.
@@ -313,6 +350,8 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
       map.setLayoutProperty("scouts-pt", "visibility", layers.scouts ? "visible" : "none");
     if (map.getLayer("soil-pt"))
       map.setLayoutProperty("soil-pt", "visibility", layers.soil ? "visible" : "none");
+    if (map.getLayer("weeds-pt"))
+      map.setLayoutProperty("weeds-pt", "visibility", layers.weeds ? "visible" : "none");
   }, [layers]);
 
   return <div ref={containerRef} className="h-full w-full" />;

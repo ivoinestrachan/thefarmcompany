@@ -31,6 +31,17 @@ export type SoilSample = {
   createdAt: string;
 };
 
+export type WeedPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  density: string;
+  species: string | null;
+  note: string | null;
+  status: string;
+  createdAt: string;
+};
+
 export type Field = {
   id: string;
   name: string;
@@ -42,6 +53,7 @@ export type Field = {
   plantings: Planting[];
   scouts: Observation[];
   soil: SoilSample[];
+  weeds: WeedPin[];
 };
 
 export type Farm = {

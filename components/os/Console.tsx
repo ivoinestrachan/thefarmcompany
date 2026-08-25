@@ -7,7 +7,7 @@ import { ringAreaAcres } from "@/lib/geo";
 import { primaryCrop, cropColor, cropLegend, NO_CROP_COLOR } from "@/lib/crops";
 import type { Farm, Field, SessionUser } from "./types";
 
-type Mode = "view" | "draw" | "scout" | "soil";
+type Mode = "view" | "draw" | "scout" | "soil" | "weed";
 
 export default function Console({ user, farms }: { user: SessionUser; farms: Farm[] }) {
   const router = useRouter();
@@ -18,13 +18,14 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const [mode, setMode] = useState<Mode>("view");
   const [draftVertices, setDraftVertices] = useState(0);
 
-  const [layers, setLayers] = useState({ scouts: true, soil: true });
+  const [layers, setLayers] = useState({ scouts: true, soil: true, weeds: true });
 
   // Modal state
   const [showNewFarm, setShowNewFarm] = useState(farms.length === 0);
   const [pendingRing, setPendingRing] = useState<number[][] | null>(null);
   const [pendingScout, setPendingScout] = useState<{ lng: number; lat: number } | null>(null);
   const [pendingSoil, setPendingSoil] = useState<{ lng: number; lat: number } | null>(null);
+  const [pendingWeed, setPendingWeed] = useState<{ lng: number; lat: number } | null>(null);
 
   const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
   const fields = activeFarm?.fields ?? [];
@@ -49,6 +50,10 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
     if (!selectedField) return;
     setMode("soil");
   }
+  function startWeed() {
+    if (!selectedField) return;
+    setMode("weed");
+  }
 
   // Farm-wide rollup for the overview strip.
   const stats = fields.reduce(
@@ -56,7 +61,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
       acc.acres += f.areaAcres;
       acc.scouts += f.scouts.length;
       acc.soil += f.soil.length;
-      acc.weedHot += f.scouts.filter((s) => s.weedPressure === "high").length;
+      acc.weedHot += f.weeds.filter((w) => w.status === "active").length;
       for (const s of f.scouts) {
         acc.healthSum += s.health;
         acc.healthCount += 1;
@@ -182,6 +187,13 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={startWeed}
+              disabled={!selectedField || mode !== "view"}
+              className="h-9 px-3.5 rounded-lg text-[13px] font-medium border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40"
+            >
+              Mark weed
+            </button>
+            <button
               onClick={startSoil}
               disabled={!selectedField || mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40"
@@ -214,7 +226,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             value={avgHealth ? `${avgHealth.toFixed(1)}/5` : "—"}
             tone={avgHealth ? (avgHealth >= 4 ? "good" : avgHealth >= 2.5 ? "warn" : "bad") : undefined}
           />
-          <StatCell label="Weed hotspots" value={String(stats.weedHot)} tone={stats.weedHot ? "bad" : undefined} />
+          <StatCell label="Weed targets" value={String(stats.weedHot)} tone={stats.weedHot ? "bad" : undefined} />
           <StatCell label="Scout points" value={String(stats.scouts)} />
           <StatCell label="Soil samples" value={String(stats.soil)} />
         </div>
@@ -241,6 +253,10 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               setPendingSoil({ lng, lat });
               setMode("view");
             }}
+            onWeedPoint={(lng, lat) => {
+              setPendingWeed({ lng, lat });
+              setMode("view");
+            }}
           />
 
           {/* Layer toggles */}
@@ -258,6 +274,12 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
                 dot="#4f9dd0"
                 on={layers.soil}
                 onClick={() => setLayers((l) => ({ ...l, soil: !l.soil }))}
+              />
+              <LayerToggle
+                label="Weed targets"
+                dot="#e5443c"
+                on={layers.weeds}
+                onClick={() => setLayers((l) => ({ ...l, weeds: !l.weeds }))}
               />
             </div>
           )}
@@ -280,6 +302,9 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           {mode === "soil" && (
             <ModeBar text="Click where you pulled the soil sample." onCancel={cancelMode} />
           )}
+          {mode === "weed" && (
+            <ModeBar text="Click each weed patch — these become the worm's targets." onCancel={cancelMode} />
+          )}
 
           {/* Field detail panel */}
           {selectedField && mode === "view" && (
@@ -288,6 +313,15 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               onClose={() => setSelectedFieldId(null)}
               onScout={startScout}
               onSoil={startSoil}
+              onWeed={startWeed}
+              onToggleWeed={async (id, status) => {
+                await fetch("/api/weeds", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ id, status }),
+                });
+                router.refresh();
+              }}
               onAddPlanting={async (payload) => {
                 await fetch("/api/plantings", {
                   method: "POST",
@@ -392,6 +426,25 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           }}
         />
       )}
+
+      {pendingWeed && selectedField && (
+        <WeedModal
+          onClose={() => setPendingWeed(null)}
+          onCreate={async (payload) => {
+            const res = await fetch("/api/weeds", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...payload, fieldId: selectedField.id, ...pendingWeed }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              setPendingWeed(null);
+              router.refresh();
+            }
+            return data.error as string | undefined;
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -477,14 +530,19 @@ function FieldPanel({
   onClose,
   onScout,
   onSoil,
+  onWeed,
+  onToggleWeed,
   onAddPlanting,
 }: {
   field: Field;
   onClose: () => void;
   onScout: () => void;
   onSoil: () => void;
+  onWeed: () => void;
+  onToggleWeed: (id: string, status: string) => Promise<void>;
   onAddPlanting: (p: { crop: string; variety: string; plantedOn: string; status: string }) => Promise<void>;
 }) {
+  const activeWeeds = field.weeds.filter((w) => w.status === "active").length;
   const [crop, setCrop] = useState("");
   const [variety, setVariety] = useState("");
   const [plantedOn, setPlantedOn] = useState("");
@@ -519,6 +577,63 @@ function FieldPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
+        {/* Worm mission */}
+        <section className="rounded-lg bg-[#f3f6f1] ring-1 ring-[#3f7a3f]/15 p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[12.5px] font-semibold text-[#2f5a2f]">Worm mission</div>
+              <div className="text-[11.5px] text-neutral-500">
+                {activeWeeds} target{activeWeeds === 1 ? "" : "s"} · geofenced route
+              </div>
+            </div>
+            <a
+              href={`/api/fields/${field.id}/mission`}
+              className="h-8 px-3 grid place-items-center rounded-lg bg-[#3f7a3f] text-white text-[12.5px] font-medium hover:bg-[#356b35]"
+            >
+              Export
+            </a>
+          </div>
+        </section>
+
+        {/* Weed targets */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+              Weed targets · {field.weeds.length}
+            </h3>
+            <button onClick={onWeed} className="text-[12px] text-[#c0392b] font-medium">
+              + Mark weed
+            </button>
+          </div>
+          {field.weeds.length === 0 && (
+            <p className="text-[12.5px] text-neutral-400">
+              No weeds marked. Drop a pin on each patch — these become the worm&apos;s targets.
+            </p>
+          )}
+          <ul className="space-y-1.5">
+            {field.weeds.map((w) => (
+              <li key={w.id} className="flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2">
+                <span
+                  className="h-2.5 w-2.5 rounded-full shrink-0"
+                  style={{ background: w.status === "cleared" ? "#6b8f5a" : "#e5443c" }}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-medium capitalize">
+                    {w.density} density{w.species ? ` · ${w.species}` : ""}
+                  </div>
+                  {w.note && <div className="text-[11.5px] text-neutral-400 truncate">{w.note}</div>}
+                </div>
+                <button
+                  onClick={() => onToggleWeed(w.id, w.status === "cleared" ? "active" : "cleared")}
+                  className="text-[11.5px] font-medium text-neutral-500 hover:text-neutral-800 shrink-0"
+                >
+                  {w.status === "cleared" ? "Reopen" : "Mark done"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         {/* Plantings */}
         <section>
           <h3 className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 mb-2">
@@ -991,6 +1106,75 @@ function NumField({
         className="w-full h-9 rounded-lg border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#3f7a3f]"
       />
     </label>
+  );
+}
+
+function WeedModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (p: { density: string; species: string; note: string }) => Promise<string | undefined>;
+}) {
+  const [density, setDensity] = useState("medium");
+  const [species, setSpecies] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <Shell onClose={onClose}>
+      <h2 className="text-[19px] font-semibold tracking-tight">Mark a weed patch</h2>
+      <p className="text-[13px] text-neutral-500 mt-1">This becomes a target the worm will service.</p>
+
+      <div className="mt-4 space-y-4">
+        <div>
+          <label className="text-[12px] font-medium text-neutral-600 block mb-1">Density</label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {["low", "medium", "high"].map((d) => (
+              <button
+                key={d}
+                onClick={() => setDensity(d)}
+                className={`h-8 rounded-lg text-[12px] capitalize border transition ${
+                  density === d
+                    ? "bg-[#c0392b] text-white border-[#c0392b]"
+                    : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                }`}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <input
+          value={species}
+          onChange={(e) => setSpecies(e.target.value)}
+          placeholder="Species (optional) — e.g. Bindweed"
+          className="w-full h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]"
+        />
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Notes (optional)"
+          rows={2}
+          className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-[13px] outline-none focus:border-[#3f7a3f] resize-none"
+        />
+
+        {error && <p className="text-[12.5px] text-red-600">{error}</p>}
+        <button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            const err = await onCreate({ density, species, note });
+            if (err) { setError(err); setBusy(false); }
+          }}
+          className="w-full h-10 rounded-lg bg-[#c0392b] text-white text-[14px] font-medium disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Mark weed target"}
+        </button>
+      </div>
+    </Shell>
   );
 }
 
