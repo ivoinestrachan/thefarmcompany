@@ -73,6 +73,7 @@ model Field {
   createdAt  DateTime      @default(now())
   plantings  Planting[]
   scouts     Observation[]
+  soil       SoilSample[]
 
   @@index([farmId])
 }
@@ -101,6 +102,26 @@ model Observation {
   note         String?
   photo        String? // data URL (base64) — swap for blob storage later
   createdAt    DateTime @default(now())
+
+  @@index([fieldId])
+}
+
+/* A geotagged soil reading — the ground-truth the Wiggler will act on:
+   where it's dry, acidic, or depleted, and where casting matters most. */
+model SoilSample {
+  id          String   @id @default(cuid())
+  fieldId     String
+  field       Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  lat         Float
+  lng         Float
+  moisture    Float? // volumetric water content %
+  ph          Float? // 0–14
+  temperature Float? // °C
+  nitrogen    Float? // ppm
+  phosphorus  Float? // ppm
+  potassium   Float? // ppm
+  note        String?
+  createdAt   DateTime @default(now())
 
   @@index([fieldId])
 }

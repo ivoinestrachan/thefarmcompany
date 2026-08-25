@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import FarmMap, { type FarmMapHandle } from "./FarmMap";
 import { ringAreaAcres } from "@/lib/geo";
+import { primaryCrop, cropColor, cropLegend, NO_CROP_COLOR } from "@/lib/crops";
 import type { Farm, Field, SessionUser } from "./types";
 
-type Mode = "view" | "draw" | "scout";
+type Mode = "view" | "draw" | "scout" | "soil";
 
 export default function Console({ user, farms }: { user: SessionUser; farms: Farm[] }) {
   const router = useRouter();
@@ -17,10 +18,13 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const [mode, setMode] = useState<Mode>("view");
   const [draftVertices, setDraftVertices] = useState(0);
 
+  const [layers, setLayers] = useState({ scouts: true, soil: true });
+
   // Modal state
   const [showNewFarm, setShowNewFarm] = useState(farms.length === 0);
   const [pendingRing, setPendingRing] = useState<number[][] | null>(null);
   const [pendingScout, setPendingScout] = useState<{ lng: number; lat: number } | null>(null);
+  const [pendingSoil, setPendingSoil] = useState<{ lng: number; lat: number } | null>(null);
 
   const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
   const fields = activeFarm?.fields ?? [];
@@ -41,6 +45,28 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
     if (!selectedField) return;
     setMode("scout");
   }
+  function startSoil() {
+    if (!selectedField) return;
+    setMode("soil");
+  }
+
+  // Farm-wide rollup for the overview strip.
+  const stats = fields.reduce(
+    (acc, f) => {
+      acc.acres += f.areaAcres;
+      acc.scouts += f.scouts.length;
+      acc.soil += f.soil.length;
+      acc.weedHot += f.scouts.filter((s) => s.weedPressure === "high").length;
+      for (const s of f.scouts) {
+        acc.healthSum += s.health;
+        acc.healthCount += 1;
+      }
+      return acc;
+    },
+    { acres: 0, scouts: 0, soil: 0, weedHot: 0, healthSum: 0, healthCount: 0 }
+  );
+  const avgHealth = stats.healthCount ? stats.healthSum / stats.healthCount : null;
+  const legend = cropLegend(fields);
   function cancelMode() {
     mapRef.current?.cancelDraw();
     setMode("view");
@@ -80,35 +106,59 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
         <div className="flex-1 overflow-y-auto px-2 py-3">
           <div className="flex items-center justify-between px-3 mb-1">
             <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
-              Fields · {fields.length}
+              Plots · {fields.length}
             </span>
           </div>
           {fields.length === 0 && (
             <p className="px-3 py-4 text-[12.5px] text-neutral-400 leading-relaxed">
-              No fields yet. Hit <span className="font-medium">Add field</span> and draw your
+              No plots yet. Hit <span className="font-medium">Add plot</span> and draw your
               boundary on the map.
             </p>
           )}
           <ul className="space-y-0.5">
-            {fields.map((f) => (
-              <li key={f.id}>
-                <button
-                  onClick={() => selectField(f.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition ${
-                    selectedFieldId === f.id ? "bg-[#eef4ee]" : "hover:bg-neutral-50"
-                  }`}
-                >
-                  <span className="h-2.5 w-2.5 rounded-sm bg-[#e0c020] shrink-0" />
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-[13.5px] font-medium truncate">{f.name}</span>
-                    <span className="block text-[11.5px] text-neutral-400">
-                      {f.areaAcres.toFixed(2)} ac · {f.landType}
+            {fields.map((f) => {
+              const crop = primaryCrop(f);
+              return (
+                <li key={f.id}>
+                  <button
+                    onClick={() => selectField(f.id)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition ${
+                      selectedFieldId === f.id ? "bg-[#eef4ee]" : "hover:bg-neutral-50"
+                    }`}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-sm shrink-0"
+                      style={{ background: crop ? cropColor(crop) : NO_CROP_COLOR }}
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[13.5px] font-medium truncate">{f.name}</span>
+                      <span className="block text-[11.5px] text-neutral-400 truncate">
+                        {crop ? `${crop} · ` : ""}{f.areaAcres.toFixed(2)} ac · {f.landType}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
+
+          {/* Crop legend */}
+          {legend.length > 0 && (
+            <div className="mt-4 px-3">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+                Crops
+              </span>
+              <ul className="mt-1.5 space-y-1">
+                {legend.map((c) => (
+                  <li key={c.crop} className="flex items-center gap-2 text-[12.5px] text-neutral-600">
+                    <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: c.color }} />
+                    <span className="flex-1 truncate">{c.crop}</span>
+                    <span className="text-neutral-400">{c.plots}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <UserFooter user={user} onSignOut={async () => {
@@ -132,6 +182,13 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={startSoil}
+              disabled={!selectedField || mode !== "view"}
+              className="h-9 px-3.5 rounded-lg text-[13px] font-medium border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40"
+            >
+              Soil sample
+            </button>
+            <button
               onClick={startScout}
               disabled={!selectedField || mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium border border-neutral-200 hover:bg-neutral-50 disabled:opacity-40"
@@ -143,10 +200,24 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               disabled={mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium bg-[#3f7a3f] text-white hover:bg-[#356b35] disabled:opacity-50"
             >
-              + Add field
+              + Add plot
             </button>
           </div>
         </header>
+
+        {/* Farm overview strip */}
+        <div className="shrink-0 flex items-stretch gap-px bg-neutral-200 border-b border-neutral-200 text-center">
+          <StatCell label="Plots" value={String(fields.length)} />
+          <StatCell label="Acres" value={stats.acres.toFixed(1)} />
+          <StatCell
+            label="Avg health"
+            value={avgHealth ? `${avgHealth.toFixed(1)}/5` : "—"}
+            tone={avgHealth ? (avgHealth >= 4 ? "good" : avgHealth >= 2.5 ? "warn" : "bad") : undefined}
+          />
+          <StatCell label="Weed hotspots" value={String(stats.weedHot)} tone={stats.weedHot ? "bad" : undefined} />
+          <StatCell label="Scout points" value={String(stats.scouts)} />
+          <StatCell label="Soil samples" value={String(stats.soil)} />
+        </div>
 
         {/* Map + panel */}
         <div className="flex-1 relative">
@@ -155,6 +226,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             fields={fields}
             selectedFieldId={selectedFieldId}
             mode={mode}
+            layers={layers}
             onSelectField={(id) => setSelectedFieldId(id)}
             onDraftChange={setDraftVertices}
             onPolygonComplete={(ring) => {
@@ -165,9 +237,32 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               setPendingScout({ lng, lat });
               setMode("view");
             }}
+            onSoilPoint={(lng, lat) => {
+              setPendingSoil({ lng, lat });
+              setMode("view");
+            }}
           />
 
-          {/* Draw / scout instruction bar */}
+          {/* Layer toggles */}
+          {mode === "view" && (
+            <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1 rounded-lg bg-white/95 backdrop-blur px-3 py-2.5 shadow-lg ring-1 ring-black/5">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">Layers</span>
+              <LayerToggle
+                label="Crop scouting"
+                dot="#4fd06a"
+                on={layers.scouts}
+                onClick={() => setLayers((l) => ({ ...l, scouts: !l.scouts }))}
+              />
+              <LayerToggle
+                label="Soil samples"
+                dot="#4f9dd0"
+                on={layers.soil}
+                onClick={() => setLayers((l) => ({ ...l, soil: !l.soil }))}
+              />
+            </div>
+          )}
+
+          {/* Draw / scout / soil instruction bar */}
           {mode === "draw" && (
             <ModeBar
               text={
@@ -182,6 +277,9 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           {mode === "scout" && (
             <ModeBar text="Click the exact spot in the field you're scouting." onCancel={cancelMode} />
           )}
+          {mode === "soil" && (
+            <ModeBar text="Click where you pulled the soil sample." onCancel={cancelMode} />
+          )}
 
           {/* Field detail panel */}
           {selectedField && mode === "view" && (
@@ -189,6 +287,7 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               field={selectedField}
               onClose={() => setSelectedFieldId(null)}
               onScout={startScout}
+              onSoil={startSoil}
               onAddPlanting={async (payload) => {
                 await fetch("/api/plantings", {
                   method: "POST",
@@ -228,22 +327,30 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
         <NewFieldModal
           areaAcres={ringAreaAcres(pendingRing)}
           onClose={() => setPendingRing(null)}
-          onCreate={async (payload) => {
+          onCreate={async ({ name, landType, crop }) => {
             const res = await fetch("/api/fields", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                ...payload,
+                name,
+                landType,
                 farmId: activeFarm.id,
                 geometry: { type: "Polygon", coordinates: [pendingRing] },
               }),
             });
             const data = await res.json();
-            if (res.ok) {
-              setPendingRing(null);
-              router.refresh();
+            if (!res.ok) return data.error as string | undefined;
+            // Optionally seed the plot with its crop right away.
+            if (crop && data.field?.id) {
+              await fetch("/api/plantings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fieldId: data.field.id, crop, status: "growing" }),
+              });
             }
-            return data.error as string | undefined;
+            setPendingRing(null);
+            router.refresh();
+            return undefined;
           }}
         />
       )}
@@ -266,11 +373,55 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           }}
         />
       )}
+
+      {pendingSoil && selectedField && (
+        <SoilModal
+          onClose={() => setPendingSoil(null)}
+          onCreate={async (payload) => {
+            const res = await fetch("/api/soil-samples", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...payload, fieldId: selectedField.id, ...pendingSoil }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              setPendingSoil(null);
+              router.refresh();
+            }
+            return data.error as string | undefined;
+          }}
+        />
+      )}
     </div>
   );
 }
 
 /* ------------------------------- pieces -------------------------------- */
+
+function StatCell({ label, value, tone }: { label: string; value: string; tone?: "good" | "warn" | "bad" }) {
+  const color =
+    tone === "good" ? "text-[#3f7a3f]" : tone === "warn" ? "text-[#b8860b]" : tone === "bad" ? "text-[#c0392b]" : "text-neutral-900";
+  return (
+    <div className="flex-1 bg-white py-2.5">
+      <div className={`text-[17px] font-semibold leading-none ${color}`}>{value}</div>
+      <div className="mt-1 text-[10.5px] uppercase tracking-wide text-neutral-400">{label}</div>
+    </div>
+  );
+}
+
+function LayerToggle({ label, dot, on, onClick }: { label: string; dot: string; on: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex items-center gap-2 text-[12.5px] text-neutral-700">
+      <span
+        className="h-3.5 w-3.5 rounded-[4px] border grid place-items-center"
+        style={{ borderColor: dot, background: on ? dot : "transparent" }}
+      >
+        {on && <span className="text-white text-[9px] leading-none">✓</span>}
+      </span>
+      {label}
+    </button>
+  );
+}
 
 function UserFooter({ user, onSignOut }: { user: SessionUser; onSignOut: () => void }) {
   return (
@@ -325,11 +476,13 @@ function FieldPanel({
   field,
   onClose,
   onScout,
+  onSoil,
   onAddPlanting,
 }: {
   field: Field;
   onClose: () => void;
   onScout: () => void;
+  onSoil: () => void;
   onAddPlanting: (p: { crop: string; variety: string; plantedOn: string; status: string }) => Promise<void>;
 }) {
   const [crop, setCrop] = useState("");
@@ -465,8 +618,52 @@ function FieldPanel({
             ))}
           </ul>
         </section>
+
+        {/* Soil samples */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+              Soil samples · {field.soil.length}
+            </h3>
+            <button onClick={onSoil} className="text-[12px] text-[#3f7a3f] font-medium">
+              + Sample
+            </button>
+          </div>
+          {field.soil.length === 0 && (
+            <p className="text-[12.5px] text-neutral-400">
+              No soil readings yet. Drop a sample point to log moisture, pH and nutrients.
+            </p>
+          )}
+          <ul className="space-y-1.5">
+            {field.soil.map((s) => (
+              <li key={s.id} className="rounded-lg bg-neutral-50 px-3 py-2">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[12px]">
+                  {s.moisture != null && <Metric label="moist" value={`${s.moisture}%`} />}
+                  {s.ph != null && <Metric label="pH" value={s.ph.toFixed(1)} />}
+                  {s.temperature != null && <Metric label="temp" value={`${s.temperature}°C`} />}
+                  {s.nitrogen != null && <Metric label="N" value={`${s.nitrogen}`} />}
+                  {s.phosphorus != null && <Metric label="P" value={`${s.phosphorus}`} />}
+                  {s.potassium != null && <Metric label="K" value={`${s.potassium}`} />}
+                </div>
+                {s.note && <p className="text-[12px] text-neutral-500 mt-0.5">{s.note}</p>}
+                <p className="text-[11px] text-neutral-300 mt-0.5">
+                  {new Date(s.createdAt).toLocaleDateString()}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
     </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="text-neutral-700">
+      <span className="text-neutral-400">{label} </span>
+      <span className="font-medium">{value}</span>
+    </span>
   );
 }
 
@@ -560,23 +757,30 @@ function NewFieldModal({
 }: {
   areaAcres: number;
   onClose: () => void;
-  onCreate: (p: { name: string; landType: string }) => Promise<string | undefined>;
+  onCreate: (p: { name: string; landType: string; crop: string }) => Promise<string | undefined>;
 }) {
   const [name, setName] = useState("");
   const [landType, setLandType] = useState("Field");
+  const [crop, setCrop] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   return (
     <Shell onClose={onClose}>
-      <h2 className="text-[19px] font-semibold tracking-tight">Name this field</h2>
+      <h2 className="text-[19px] font-semibold tracking-tight">Name this plot</h2>
       <p className="text-[13px] text-neutral-500 mt-1">{areaAcres.toFixed(2)} acres drawn.</p>
       <div className="mt-4 space-y-2.5">
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Field name — e.g. North Plot"
+          placeholder="Plot name — e.g. North Plot"
+          className="w-full h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]"
+        />
+        <input
+          value={crop}
+          onChange={(e) => setCrop(e.target.value)}
+          placeholder="Crop growing here (optional) — e.g. Carrots"
           className="w-full h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]"
         />
         <select
@@ -584,7 +788,7 @@ function NewFieldModal({
           onChange={(e) => setLandType(e.target.value)}
           className="w-full h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]"
         >
-          {["Field", "Pasture", "Orchard", "Bed", "Greenhouse"].map((t) => (
+          {["Field", "Pasture", "Orchard", "Bed", "Greenhouse", "Row crop"].map((t) => (
             <option key={t}>{t}</option>
           ))}
         </select>
@@ -593,12 +797,12 @@ function NewFieldModal({
           disabled={!name || busy}
           onClick={async () => {
             setBusy(true);
-            const err = await onCreate({ name, landType });
+            const err = await onCreate({ name, landType, crop });
             if (err) { setError(err); setBusy(false); }
           }}
           className="w-full h-10 rounded-lg bg-[#3f7a3f] text-white text-[14px] font-medium disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save field"}
+          {busy ? "Saving…" : "Save plot"}
         </button>
       </div>
     </Shell>
@@ -706,6 +910,87 @@ function ScoutModal({
         </button>
       </div>
     </Shell>
+  );
+}
+
+type SoilPayload = {
+  moisture: string; ph: string; temperature: string;
+  nitrogen: string; phosphorus: string; potassium: string; note: string;
+};
+
+function SoilModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (p: SoilPayload) => Promise<string | undefined>;
+}) {
+  const [v, setV] = useState<SoilPayload>({
+    moisture: "", ph: "", temperature: "", nitrogen: "", phosphorus: "", potassium: "", note: "",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof SoilPayload) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setV((prev) => ({ ...prev, [k]: e.target.value }));
+
+  return (
+    <Shell onClose={onClose}>
+      <h2 className="text-[19px] font-semibold tracking-tight">Log a soil sample</h2>
+      <p className="text-[13px] text-neutral-500 mt-1">Fill in whatever you measured — all optional.</p>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <NumField label="Moisture %" value={v.moisture} onChange={set("moisture")} />
+        <NumField label="pH" value={v.ph} onChange={set("ph")} step="0.1" />
+        <NumField label="Temp °C" value={v.temperature} onChange={set("temperature")} />
+        <NumField label="N ppm" value={v.nitrogen} onChange={set("nitrogen")} />
+        <NumField label="P ppm" value={v.phosphorus} onChange={set("phosphorus")} />
+        <NumField label="K ppm" value={v.potassium} onChange={set("potassium")} />
+      </div>
+
+      <textarea
+        value={v.note}
+        onChange={set("note")}
+        placeholder="Notes (optional)"
+        rows={2}
+        className="w-full mt-3 rounded-lg border border-neutral-200 px-3 py-2 text-[13px] outline-none focus:border-[#3f7a3f] resize-none"
+      />
+
+      {error && <p className="text-[12.5px] text-red-600 mt-2">{error}</p>}
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          const err = await onCreate(v);
+          if (err) { setError(err); setBusy(false); }
+        }}
+        className="w-full h-10 mt-3 rounded-lg bg-[#3f7a3f] text-white text-[14px] font-medium disabled:opacity-50"
+      >
+        {busy ? "Saving…" : "Save sample"}
+      </button>
+    </Shell>
+  );
+}
+
+function NumField({
+  label, value, onChange, step,
+}: {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  step?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-medium text-neutral-500">{label}</span>
+      <input
+        type="number"
+        inputMode="decimal"
+        step={step}
+        value={value}
+        onChange={onChange}
+        className="w-full h-9 rounded-lg border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#3f7a3f]"
+      />
+    </label>
   );
 }
 

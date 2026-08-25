@@ -9,6 +9,7 @@ import {
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Field } from "./types";
+import { primaryCrop, cropColor, NO_CROP_COLOR } from "@/lib/crops";
 
 export type FarmMapHandle = {
   finishDraw: () => void;
@@ -16,16 +17,20 @@ export type FarmMapHandle = {
   flyToField: (field: Field) => void;
 };
 
-type Mode = "view" | "draw" | "scout";
+type Mode = "view" | "draw" | "scout" | "soil";
+
+type LayerToggles = { scouts: boolean; soil: boolean };
 
 type Props = {
   fields: Field[];
   selectedFieldId: string | null;
   mode: Mode;
+  layers: LayerToggles;
   onSelectField: (id: string) => void;
   onDraftChange: (vertices: number) => void;
   onPolygonComplete: (ring: number[][]) => void;
   onScoutPoint: (lng: number, lat: number) => void;
+  onSoilPoint: (lng: number, lat: number) => void;
 };
 
 // Free Esri World Imagery — satellite raster, no API key required.
@@ -46,11 +51,19 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
 
 const fieldsToGeoJSON = (fields: Field[], selectedId: string | null) => ({
   type: "FeatureCollection" as const,
-  features: fields.map((f) => ({
-    type: "Feature" as const,
-    properties: { id: f.id, name: f.name, selected: f.id === selectedId },
-    geometry: f.geometry,
-  })),
+  features: fields.map((f) => {
+    const crop = primaryCrop(f);
+    return {
+      type: "Feature" as const,
+      properties: {
+        id: f.id,
+        name: f.name,
+        selected: f.id === selectedId,
+        color: crop ? cropColor(crop) : NO_CROP_COLOR,
+      },
+      geometry: f.geometry,
+    };
+  }),
 });
 
 const scoutsToGeoJSON = (fields: Field[]) => ({
@@ -64,8 +77,19 @@ const scoutsToGeoJSON = (fields: Field[]) => ({
   ),
 });
 
+const soilToGeoJSON = (fields: Field[]) => ({
+  type: "FeatureCollection" as const,
+  features: fields.flatMap((f) =>
+    f.soil.map((s) => ({
+      type: "Feature" as const,
+      properties: { moisture: s.moisture ?? -1 },
+      geometry: { type: "Point" as const, coordinates: [s.lng, s.lat] },
+    }))
+  ),
+});
+
 const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
-  { fields, selectedFieldId, mode, onSelectField, onDraftChange, onPolygonComplete, onScoutPoint },
+  { fields, selectedFieldId, mode, layers, onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,9 +98,9 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
   const draftRef = useRef<number[][]>([]);
   // Keep latest props/mode accessible inside stable event handlers.
   const modeRef = useRef(mode);
-  const cbRef = useRef({ onSelectField, onDraftChange, onPolygonComplete, onScoutPoint });
+  const cbRef = useRef({ onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint });
   modeRef.current = mode;
-  cbRef.current = { onSelectField, onDraftChange, onPolygonComplete, onScoutPoint };
+  cbRef.current = { onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint };
 
   const renderDraft = () => {
     const map = mapRef.current;
@@ -152,8 +176,8 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         type: "fill",
         source: "fields",
         paint: {
-          "fill-color": ["case", ["get", "selected"], "#7ee081", "#ffe14d"],
-          "fill-opacity": ["case", ["get", "selected"], 0.35, 0.12],
+          "fill-color": ["get", "color"],
+          "fill-opacity": ["case", ["get", "selected"], 0.5, 0.28],
         },
       });
       map.addLayer({
@@ -161,7 +185,7 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         type: "line",
         source: "fields",
         paint: {
-          "line-color": ["case", ["get", "selected"], "#7ee081", "#ffe14d"],
+          "line-color": ["case", ["get", "selected"], "#ffffff", ["get", "color"]],
           "line-width": ["case", ["get", "selected"], 3, 2],
         },
       });
@@ -176,6 +200,24 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
           "circle-color": [
             "interpolate", ["linear"], ["get", "health"],
             1, "#e5533c", 3, "#f5c542", 5, "#4fd06a",
+          ],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+
+      map.addSource("soil", { type: "geojson", data: soilToGeoJSON(fields) });
+      map.addLayer({
+        id: "soil-pt",
+        type: "circle",
+        source: "soil",
+        paint: {
+          // Blue = wet, brown = dry; grey when moisture wasn't recorded.
+          "circle-radius": 6,
+          "circle-color": [
+            "case",
+            ["<", ["get", "moisture"], 0], "#9aa0a6",
+            ["interpolate", ["linear"], ["get", "moisture"], 0, "#b07a43", 50, "#4f9dd0", 100, "#2f6fb0"],
           ],
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 2,
@@ -213,13 +255,17 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         cbRef.current.onScoutPoint(e.lngLat.lng, e.lngLat.lat);
         return;
       }
+      if (m === "soil") {
+        cbRef.current.onSoilPoint(e.lngLat.lng, e.lngLat.lat);
+        return;
+      }
       const hit = map.queryRenderedFeatures(e.point, { layers: ["fields-fill"] });
       if (hit.length) cbRef.current.onSelectField(hit[0].properties?.id as string);
     });
 
     map.on("mousemove", (e) => {
       const m = modeRef.current;
-      map.getCanvas().style.cursor = m === "draw" || m === "scout" ? "crosshair" : "";
+      map.getCanvas().style.cursor = m === "draw" || m === "scout" || m === "soil" ? "crosshair" : "";
       if (m === "view") {
         const hit = map.queryRenderedFeatures(e.point, { layers: ["fields-fill"] });
         map.getCanvas().style.cursor = hit.length ? "pointer" : "";
@@ -255,7 +301,18 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
       fieldsToGeoJSON(fields, selectedFieldId)
     );
     (map.getSource("scouts") as maplibregl.GeoJSONSource | undefined)?.setData(scoutsToGeoJSON(fields));
+    (map.getSource("soil") as maplibregl.GeoJSONSource | undefined)?.setData(soilToGeoJSON(fields));
   }, [fields, selectedFieldId]);
+
+  // Toggle layer visibility.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    if (map.getLayer("scouts-pt"))
+      map.setLayoutProperty("scouts-pt", "visibility", layers.scouts ? "visible" : "none");
+    if (map.getLayer("soil-pt"))
+      map.setLayoutProperty("soil-pt", "visibility", layers.soil ? "visible" : "none");
+  }, [layers]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 });
