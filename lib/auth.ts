@@ -1,0 +1,81 @@
+import { randomBytes, scrypt, timingSafeEqual } from "crypto";
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
+
+/* ------------------------------------------------------------------ */
+/*  Minimal, dependency-free auth: scrypt password hashing + DB-backed */
+/*  session tokens carried in an httpOnly cookie. Good enough for the  */
+/*  farmOS console; swap for Auth.js if we add social login later.     */
+/* ------------------------------------------------------------------ */
+
+export const SESSION_COOKIE = "fos_session";
+const SESSION_DAYS = 30;
+
+function scryptAsync(password: string, salt: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(password, salt, 64, (err, derived) => {
+      if (err) reject(err);
+      else resolve(derived);
+    });
+  });
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const derived = await scryptAsync(password, salt);
+  return `${salt}:${derived.toString("hex")}`;
+}
+
+export async function verifyPassword(
+  password: string,
+  stored: string
+): Promise<boolean> {
+  const [salt, key] = stored.split(":");
+  if (!salt || !key) return false;
+  const derived = await scryptAsync(password, salt);
+  const keyBuf = Buffer.from(key, "hex");
+  return keyBuf.length === derived.length && timingSafeEqual(keyBuf, derived);
+}
+
+export async function createSession(userId: string) {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 864e5);
+  await prisma.session.create({ data: { token, userId, expiresAt } });
+
+  const store = await cookies();
+  store.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: expiresAt,
+  });
+}
+
+export async function destroySession() {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (token) {
+    await prisma.session.deleteMany({ where: { token } });
+    store.delete(SESSION_COOKIE);
+  }
+}
+
+/** Returns the signed-in user, or null. Also clears expired sessions lazily. */
+export async function getUser() {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+
+  const session = await prisma.session.findUnique({
+    where: { token },
+    include: { user: true },
+  });
+  if (!session) return null;
+  if (session.expiresAt < new Date()) {
+    await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+    return null;
+  }
+  const { id, email, name } = session.user;
+  return { id, email, name };
+}

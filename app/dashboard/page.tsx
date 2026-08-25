@@ -1,12 +1,61 @@
-import type { Metadata } from "next";
-import SensorDashboard from "@/components/SensorDashboard";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { getUser } from "@/lib/auth";
+import Console from "@/components/os/Console";
+import type { Farm } from "@/components/os/types";
 
-export const metadata: Metadata = {
-  title: "Soil Telemetry · The Farming Company",
-  description:
-    "Soil monitoring dashboard — moisture, temperature, pH, salinity and nutrients across your fields in real time.",
-};
+export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
-  return <SensorDashboard />;
+export default async function OsPage() {
+  const user = await getUser();
+  if (!user) redirect("/login");
+
+  const farms = await prisma.farm.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+    include: {
+      fields: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          plantings: { orderBy: { createdAt: "desc" } },
+          scouts: { orderBy: { createdAt: "desc" } },
+        },
+      },
+    },
+  });
+
+  // Serialize Dates → strings for the client component.
+  const data: Farm[] = farms.map((f) => ({
+    id: f.id,
+    name: f.name,
+    location: f.location,
+    fields: f.fields.map((fl) => ({
+      id: fl.id,
+      name: fl.name,
+      landType: fl.landType,
+      geometry: fl.geometry as Farm["fields"][number]["geometry"],
+      areaAcres: fl.areaAcres,
+      centerLat: fl.centerLat,
+      centerLng: fl.centerLng,
+      plantings: fl.plantings.map((p) => ({
+        id: p.id,
+        crop: p.crop,
+        variety: p.variety,
+        status: p.status,
+        plantedOn: p.plantedOn ? p.plantedOn.toISOString() : null,
+      })),
+      scouts: fl.scouts.map((s) => ({
+        id: s.id,
+        lat: s.lat,
+        lng: s.lng,
+        health: s.health,
+        weedPressure: s.weedPressure,
+        note: s.note,
+        photo: s.photo,
+        createdAt: s.createdAt.toISOString(),
+      })),
+    })),
+  }));
+
+  return <Console user={{ id: user.id, name: user.name, email: user.email }} farms={data} />;
 }

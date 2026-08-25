@@ -19,3 +19,88 @@ model Signup {
 
   @@index([createdAt])
 }
+
+/* ------------------------------------------------------------------ */
+/*  farmOS — the operator console. A farmer signs in, draws their      */
+/*  fields on the map, logs what's growing, and scouts crop health.    */
+/*  Every observation is geotagged inside a field so the data becomes  */
+/*  the ground-truth map the Wiggler will navigate underground.        */
+/* ------------------------------------------------------------------ */
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  farms        Farm[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Farm {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  location  String?
+  createdAt DateTime @default(now())
+  fields    Field[]
+
+  @@index([userId])
+}
+
+model Field {
+  id         String        @id @default(cuid())
+  farmId     String
+  farm       Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name       String
+  landType   String        @default("Field") // Field, Pasture, Orchard, Bed
+  geometry   Json // GeoJSON Polygon: { type, coordinates:[[[lng,lat],...]] }
+  areaAcres  Float         @default(0)
+  centerLat  Float
+  centerLng  Float
+  createdAt  DateTime      @default(now())
+  plantings  Planting[]
+  scouts     Observation[]
+
+  @@index([farmId])
+}
+
+model Planting {
+  id        String    @id @default(cuid())
+  fieldId   String
+  field     Field     @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  crop      String
+  variety   String?
+  plantedOn DateTime?
+  status    String    @default("growing") // growing, harvested, fallow
+  createdAt DateTime  @default(now())
+
+  @@index([fieldId])
+}
+
+model Observation {
+  id           String   @id @default(cuid())
+  fieldId      String
+  field        Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  lat          Float
+  lng          Float
+  health       Int      @default(3) // 1 (poor) .. 5 (thriving)
+  weedPressure String   @default("none") // none, low, medium, high
+  note         String?
+  photo        String? // data URL (base64) — swap for blob storage later
+  createdAt    DateTime @default(now())
+
+  @@index([fieldId])
+}
