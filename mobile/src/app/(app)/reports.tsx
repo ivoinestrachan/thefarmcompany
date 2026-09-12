@@ -59,7 +59,7 @@ export default function Reports() {
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
           renderSectionHeader={({ section }) => (
             <Text className="px-4 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400 bg-white">
               {section.title} · {section.data.length}
