@@ -8,7 +8,7 @@ export default function AppLayout() {
   if (!ready) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator color="#3f7a3f" />
+        <ActivityIndicator color="#2563eb" />
       </View>
     );
   }
@@ -18,7 +18,7 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#3f7a3f",
+        tabBarActiveTintColor: "#2563eb",
         tabBarInactiveTintColor: "#9ca3af",
         tabBarStyle: { borderTopColor: "#eee" },
       }}

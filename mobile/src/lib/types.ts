@@ -1,11 +1,20 @@
 export type TeamMember = { id: string; name: string; email: string; role: string };
 
+export type FieldOutline = {
+  id: string;
+  name: string;
+  crop: string | null;
+  color: string;
+  coords: { latitude: number; longitude: number }[];
+};
+
 export type Farm = {
   id: string;
   name: string;
   location: string | null;
   center: { lat: number; lng: number };
   team: TeamMember[];
+  fields: FieldOutline[];
 };
 
 export type SessionUser = { id: string; name: string; email: string };

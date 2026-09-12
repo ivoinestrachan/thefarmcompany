@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserFromRequest } from "@/lib/auth";
 import { farmAccessWhere } from "@/lib/access";
+import { cropColor, NO_CROP_COLOR } from "@/lib/crops";
 
 /* Everything the mobile app needs on launch: the user's farms (with a map
    centre) and each farm's team members (the laborers you can dispatch). */
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
     include: {
       user: true,
       members: { include: { user: true } },
-      fields: { select: { centerLat: true, centerLng: true } },
+      fields: { include: { plantings: { orderBy: { createdAt: "desc" } } } },
     },
   });
 
@@ -32,7 +33,21 @@ export async function GET(req: Request) {
       { id: f.user.id, name: f.user.name, email: f.user.email, role: "owner" },
       ...f.members.map((m) => ({ id: m.user.id, name: m.user.name, email: m.user.email, role: m.role })),
     ];
-    return { id: f.id, name: f.name, location: f.location, center, team };
+    // Field outlines as {latitude,longitude} rings, coloured by crop (matches web).
+    const fields = pts.map((fl) => {
+      const geo = fl.geometry as { coordinates?: number[][][] };
+      const ring = geo.coordinates?.[0] ?? [];
+      const growing = fl.plantings.find((p) => p.status === "growing");
+      const crop = (growing ?? fl.plantings[0])?.crop ?? null;
+      return {
+        id: fl.id,
+        name: fl.name,
+        crop,
+        color: crop ? cropColor(crop) : NO_CROP_COLOR,
+        coords: ring.map(([lng, lat]) => ({ latitude: lat, longitude: lng })),
+      };
+    });
+    return { id: f.id, name: f.name, location: f.location, center, team, fields };
   });
 
   return NextResponse.json({ user, farms: data });

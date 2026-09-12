@@ -97,14 +97,14 @@ export default function Capture() {
             onPress={takePhoto}
             className="h-56 rounded-xl border-2 border-dashed border-neutral-200 items-center justify-center"
           >
-            <Ionicons name="camera" size={34} color="#3f7a3f" />
+            <Ionicons name="camera" size={34} color="#2563eb" />
             <Text className="mt-2 text-[14px] font-medium text-farm">Take a photo of the crop</Text>
             <Text className="text-[12px] text-neutral-400 mt-0.5">Get in close on the affected leaves</Text>
           </Pressable>
         )}
 
         <View className="flex-row items-center gap-1.5 mt-3">
-          <Ionicons name="location" size={14} color={coords ? "#3f7a3f" : "#9ca3af"} />
+          <Ionicons name="location" size={14} color={coords ? "#2563eb" : "#9ca3af"} />
           <Text className="text-[12px] text-neutral-500">
             {coords ? `Pinned at ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : "Getting your location…"}
           </Text>
@@ -136,8 +136,8 @@ export default function Capture() {
               onPress={() => setSeverity(s)}
               className="flex-1 h-11 rounded-xl items-center justify-center border"
               style={{
-                backgroundColor: severity === s ? "#3f7a3f" : "#fff",
-                borderColor: severity === s ? "#3f7a3f" : "#e5e5e5",
+                backgroundColor: severity === s ? "#2563eb" : "#fff",
+                borderColor: severity === s ? "#2563eb" : "#e5e5e5",
               }}
             >
               <Text

@@ -47,7 +47,7 @@ export default function Reports() {
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#3f7a3f" />
+          <ActivityIndicator color="#2563eb" />
         </View>
       ) : reports.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">

@@ -6,9 +6,9 @@ module.exports = {
     extend: {
       colors: {
         farm: {
-          DEFAULT: "#3f7a3f",
-          deep: "#2f5a2f",
-          soft: "#eef4ee",
+          DEFAULT: "#2563eb",
+          deep: "#1d4ed8",
+          soft: "#eff6ff",
         },
       },
     },
