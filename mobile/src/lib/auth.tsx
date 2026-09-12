@@ -6,6 +6,9 @@ type AuthState = {
   ready: boolean;
   user: SessionUser | null;
   farms: Farm[];
+  activeFarm: Farm | null;
+  activeFarmId: string | null;
+  setActiveFarmId: (id: string) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -17,12 +20,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [farms, setFarms] = useState<Farm[]>([]);
+  const [activeFarmId, setActiveFarmId] = useState<string | null>(null);
 
   async function loadBootstrap() {
     const data = await api<{ user: SessionUser; farms: Farm[] }>("/api/mobile/bootstrap");
     setUser(data.user);
     setFarms(data.farms);
+    setActiveFarmId((cur) => cur ?? data.farms[0]?.id ?? null);
   }
+
+  const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
 
   useEffect(() => {
     (async () => {
@@ -51,10 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setToken(null);
     setUser(null);
     setFarms([]);
+    setActiveFarmId(null);
   }
 
   return (
-    <AuthContext.Provider value={{ ready, user, farms, signIn, signOut, refresh: loadBootstrap }}>
+    <AuthContext.Provider
+      value={{ ready, user, farms, activeFarm, activeFarmId, setActiveFarmId, signIn, signOut, refresh: loadBootstrap }}
+    >
       {children}
     </AuthContext.Provider>
   );

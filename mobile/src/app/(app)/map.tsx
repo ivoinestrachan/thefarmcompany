@@ -27,12 +27,12 @@ const rgba = (hex: string, a: number) => {
 
 export default function MapScreen() {
   const router = useRouter();
-  const { farms } = useAuth();
-  const farm = farms[0] ?? null;
+  const { activeFarm: farm, farms, setActiveFarmId } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [selected, setSelected] = useState<Report | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [farmMenu, setFarmMenu] = useState(false);
 
   const load = useCallback(async () => {
     if (!farm) return;
@@ -138,15 +138,53 @@ export default function MapScreen() {
         </MapView>
       )}
 
-      {/* Header */}
+      {/* Header — tap to switch farms */}
       <SafeAreaView className="absolute top-0 left-0 right-0" pointerEvents="box-none">
-        <View className="mx-4 mt-2 rounded-xl bg-white/95 px-4 py-2.5 shadow" pointerEvents="auto">
-          <Text className="text-[15px] font-semibold tracking-tight text-neutral-900">{farm?.name ?? "Your farm"}</Text>
-          <Text className="text-[11.5px] text-neutral-500">
-            {loading ? "Loading…" : `${reports.filter((r) => r.status !== "resolved").length} open · ${reports.length} total`}
-          </Text>
-        </View>
+        <Pressable
+          onPress={() => setFarmMenu(true)}
+          className="mx-4 mt-2 flex-row items-center rounded-xl bg-white/95 px-4 py-2.5 shadow"
+          pointerEvents="auto"
+        >
+          <View className="flex-1">
+            <Text className="text-[15px] font-semibold tracking-tight text-neutral-900">{farm?.name ?? "Your farm"}</Text>
+            <Text className="text-[11.5px] text-neutral-500">
+              {loading ? "Loading…" : `${reports.filter((r) => r.status !== "resolved").length} open · ${reports.length} total`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={18} color="#6b7280" />
+        </Pressable>
       </SafeAreaView>
+
+      {/* Farm switcher */}
+      <Modal visible={farmMenu} transparent animationType="fade" onRequestClose={() => setFarmMenu(false)}>
+        <Pressable className="flex-1 bg-black/40" onPress={() => setFarmMenu(false)}>
+          <SafeAreaView>
+            <Pressable className="mx-4 mt-14 rounded-2xl bg-white p-2" onPress={(e) => e.stopPropagation()}>
+              <Text className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-neutral-400">
+                Your farms
+              </Text>
+              {farms.map((f) => (
+                <Pressable
+                  key={f.id}
+                  onPress={() => { setActiveFarmId(f.id); setFarmMenu(false); }}
+                  className="flex-row items-center gap-3 rounded-xl px-3 py-2.5 active:bg-neutral-50"
+                >
+                  <View className="h-8 w-8 rounded-lg bg-farm/10 items-center justify-center">
+                    <Ionicons name="leaf" size={16} color="#2563eb" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[14px] font-medium text-neutral-900">{f.name}</Text>
+                    <Text className="text-[11.5px] text-neutral-400">
+                      {f.location ?? ""}{f.location ? " · " : ""}{f.fields.length} fields
+                    </Text>
+                  </View>
+                  {f.id === farm?.id && <Ionicons name="checkmark" size={18} color="#2563eb" />}
+                </Pressable>
+              ))}
+            </Pressable>
+          </SafeAreaView>
+        </Pressable>
+      </Modal>
 
       {/* Report a problem (camera) */}
       <Pressable

@@ -10,8 +10,7 @@ import type { Report } from "@/lib/types";
 const sevColor = (s: string) => (s === "high" ? "#e5443c" : s === "low" ? "#e0c020" : "#e8863c");
 
 export default function Reports() {
-  const { farms, signOut } = useAuth();
-  const farm = farms[0] ?? null;
+  const { activeFarm: farm, signOut } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
