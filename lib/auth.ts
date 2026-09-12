@@ -61,12 +61,8 @@ export async function destroySession() {
   }
 }
 
-/** Returns the signed-in user, or null. Also clears expired sessions lazily. */
-export async function getUser() {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-
+/** Resolve a session token to a user, clearing it if expired. */
+async function userForToken(token: string) {
   const session = await prisma.session.findUnique({
     where: { token },
     include: { user: true },
@@ -78,4 +74,32 @@ export async function getUser() {
   }
   const { id, email, name } = session.user;
   return { id, email, name };
+}
+
+/** Returns the signed-in user from the session cookie, or null. */
+export async function getUser() {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  return userForToken(token);
+}
+
+/** Like getUser, but also accepts a `Authorization: Bearer <token>` header so
+    the mobile app can authenticate without cookies. */
+export async function getUserFromRequest(req: Request) {
+  const auth = req.headers.get("authorization") || "";
+  const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  if (bearer) {
+    const u = await userForToken(bearer);
+    if (u) return u;
+  }
+  return getUser();
+}
+
+/** Create a session and return its raw token (for mobile clients). */
+export async function createSessionToken(userId: string): Promise<string> {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 864e5);
+  await prisma.session.create({ data: { token, userId, expiresAt } });
+  return token;
 }

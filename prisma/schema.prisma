@@ -28,14 +28,41 @@ model Signup {
 /* ------------------------------------------------------------------ */
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String
-  passwordHash String
-  createdAt    DateTime     @default(now())
-  sessions     Session[]
-  farms        Farm[]
-  memberships  FarmMember[]
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String
+  passwordHash  String
+  createdAt     DateTime     @default(now())
+  sessions      Session[]
+  farms         Farm[]
+  memberships   FarmMember[]
+  reportsMade   Report[]     @relation("ReportCreatedBy")
+  reportsAssigned Report[]   @relation("ReportAssignedTo")
+}
+
+/* A crop-disease report from the mobile app: a farmer photographs a sick crop,
+   it drops a pin on the farm map, and a laborer (team member) is dispatched to
+   treat it. open → assigned → resolved. */
+model Report {
+  id           String   @id @default(cuid())
+  farmId       String
+  farm         Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  createdById  String
+  createdBy    User     @relation("ReportCreatedBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?    @relation("ReportAssignedTo", fields: [assignedToId], references: [id])
+  lat          Float
+  lng          Float
+  crop         String?
+  issue        String? // suspected disease / what's wrong
+  severity     String   @default("medium") // low, medium, high
+  note         String?
+  photo        String? // data URL (base64) — swap for blob storage later
+  status       String   @default("open") // open, assigned, resolved
+  createdAt    DateTime @default(now())
+
+  @@index([farmId])
+  @@index([assignedToId])
 }
 
 /* A person on a farm's team. The owner is the farm's creator (Farm.userId);
@@ -73,6 +100,7 @@ model Farm {
   createdAt DateTime @default(now())
   fields    Field[]
   members   FarmMember[]
+  reports   Report[]
 
   @@index([userId])
 }
