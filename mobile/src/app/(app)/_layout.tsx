@@ -1,7 +1,7 @@
 import { Tabs, Redirect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/lib/auth";
-import { View, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { BlurView } from "expo-blur";
 
 export default function AppLayout() {
@@ -20,16 +20,22 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#2563eb",
-        tabBarInactiveTintColor: "#6b7280",
-        // Float the tab bar over the map with a translucent glass blur.
+        tabBarInactiveTintColor: "#374151",
+        tabBarLabelStyle: { fontWeight: "600" },
+        // Float the tab bar over the map: frosted glass, still readable.
         tabBarStyle: {
           position: "absolute",
-          borderTopWidth: 0,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: "rgba(0,0,0,0.08)",
           elevation: 0,
-          backgroundColor: Platform.OS === "android" ? "rgba(255,255,255,0.7)" : "transparent",
+          backgroundColor: "transparent",
         },
         tabBarBackground: () => (
-          <BlurView tint="light" intensity={40} style={StyleSheet.absoluteFill} />
+          <View style={StyleSheet.absoluteFill}>
+            <BlurView tint="light" intensity={80} style={StyleSheet.absoluteFill} />
+            {/* white scrim so icons/labels stay legible over the map */}
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.6)" }]} />
+          </View>
         ),
       }}
     >
