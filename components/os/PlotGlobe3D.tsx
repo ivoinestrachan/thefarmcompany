@@ -231,12 +231,16 @@ function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit
 
   const s = useRef({
     ready: false,
-    pos: new THREE.Vector3(),
+    feet: new THREE.Vector3(), // ground position under the camera
+    vel: new THREE.Vector3(), // smoothed horizontal velocity
     east: new THREE.Vector3(),
     north: new THREE.Vector3(),
     up: new THREE.Vector3(),
-    yaw: 0, // 0 = facing north
+    yaw: 0, // target heading (0 = north)
     pitch: -0.05,
+    cyaw: 0, // eased heading actually used
+    cpitch: -0.05,
+    hasGround: false,
     keys: new Set<string>(),
     ray: new THREE.Raycaster(),
   });
@@ -253,7 +257,11 @@ function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit
     st.up.setFromMatrixColumn(m, 2).transformDirection(tiles.group.matrixWorld);
     const ecef = new THREE.Vector3();
     ell.getCartographicToPosition(lat * D2R, lon * D2R, 2, ecef);
-    st.pos.copy(ecef).applyMatrix4(tiles.group.matrixWorld);
+    st.feet.copy(ecef).applyMatrix4(tiles.group.matrixWorld);
+    st.vel.set(0, 0, 0);
+    st.cyaw = st.yaw;
+    st.cpitch = st.pitch;
+    st.hasGround = false;
     st.ready = true;
 
     camera.near = 0.3;
@@ -286,30 +294,44 @@ function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit
     };
   }, [tiles, lat, lon, camera, gl, onExit]);
 
-  useFrame((_, dt) => {
+  useFrame((_, rawDt) => {
     const st = s.current;
     if (!st.ready || !tiles) return;
-    const speed = (st.keys.has("shift") ? 14 : 5) * Math.min(dt, 0.05);
-    const fwd = (st.keys.has("w") || st.keys.has("arrowup") ? 1 : 0) - (st.keys.has("s") || st.keys.has("arrowdown") ? 1 : 0);
-    const strafe = (st.keys.has("d") || st.keys.has("arrowright") ? 1 : 0) - (st.keys.has("a") || st.keys.has("arrowleft") ? 1 : 0);
+    const dt = Math.min(rawDt, 0.05); // clamp big frames so nothing lurches
+    // Exponential smoothing factor helper.
+    const k = (rate: number) => 1 - Math.exp(-dt * rate);
 
-    const cos = Math.cos(st.yaw), sin = Math.sin(st.yaw);
+    // Ease the look toward the mouse target (removes micro-jitter).
+    st.cyaw += (st.yaw - st.cyaw) * k(18);
+    st.cpitch += (st.pitch - st.cpitch) * k(18);
+    const cos = Math.cos(st.cyaw), sin = Math.sin(st.cyaw);
     const horiz = new THREE.Vector3().addScaledVector(st.north, cos).addScaledVector(st.east, sin);
     const right = new THREE.Vector3().addScaledVector(st.east, cos).addScaledVector(st.north, -sin);
-    if (fwd) st.pos.addScaledVector(horiz, fwd * speed);
-    if (strafe) st.pos.addScaledVector(right, strafe * speed);
 
-    // Snap to ground: cast down from above the current spot onto the tiles.
-    const from = st.pos.clone().addScaledVector(st.up, 60);
+    // Velocity with smooth accel/decel instead of instant start/stop.
+    const fwd = (st.keys.has("w") || st.keys.has("arrowup") ? 1 : 0) - (st.keys.has("s") || st.keys.has("arrowdown") ? 1 : 0);
+    const strafe = (st.keys.has("d") || st.keys.has("arrowright") ? 1 : 0) - (st.keys.has("a") || st.keys.has("arrowleft") ? 1 : 0);
+    const wish = new THREE.Vector3().addScaledVector(horiz, fwd).addScaledVector(right, strafe);
+    if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(st.keys.has("shift") ? 13 : 5);
+    st.vel.lerp(wish, k(9));
+    st.feet.addScaledVector(st.vel, dt);
+
+    // Follow the ground smoothly (don't hard-snap through LOD pops).
+    const from = st.feet.clone().addScaledVector(st.up, 80);
     st.ray.set(from, st.up.clone().multiplyScalar(-1));
-    st.ray.far = 400;
+    st.ray.far = 600;
     const hits = st.ray.intersectObject(tiles.group, true);
-    if (hits.length) st.pos.copy(hits[0].point).addScaledVector(st.up, EYE);
+    if (hits.length) {
+      // ray is vertical, so only the height differs — ease toward it.
+      const rate = st.hasGround ? 6 : 60; // snap immediately the first time
+      st.feet.lerp(hits[0].point, k(rate));
+      st.hasGround = true;
+    }
 
-    const look = horiz.clone().multiplyScalar(Math.cos(st.pitch)).addScaledVector(st.up, Math.sin(st.pitch));
-    camera.position.copy(st.pos);
+    const look = horiz.clone().multiplyScalar(Math.cos(st.cpitch)).addScaledVector(st.up, Math.sin(st.cpitch));
+    camera.position.copy(st.feet).addScaledVector(st.up, EYE);
     camera.up.copy(st.up);
-    camera.lookAt(st.pos.clone().add(look));
+    camera.lookAt(camera.position.clone().add(look));
     camera.updateMatrixWorld();
   });
 
