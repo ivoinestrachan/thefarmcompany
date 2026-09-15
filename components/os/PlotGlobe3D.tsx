@@ -14,6 +14,7 @@ import {
 import { GoogleCloudAuthPlugin } from "3d-tiles-renderer/plugins";
 import { Html } from "@react-three/drei";
 import type { Field } from "./types";
+import FieldWalk3D from "./FieldWalk3D";
 
 /* Photoreal 3D of the actual plot using Google Photorealistic 3D Tiles — the
    real captured mesh of the world (like Google Earth), with our farm data
@@ -77,6 +78,11 @@ export default function PlotGlobe3D({
     await onSaveShape([...draftLL, draftLL[0]]);
     setSaving(false);
     resetDraw();
+  }
+
+  // Walking uses a crisp stylised field scene (Google tiles melt at eye level).
+  if (walking) {
+    return <FieldWalk3D field={field} onExit={() => setWalking(false)} />;
   }
 
   return (
