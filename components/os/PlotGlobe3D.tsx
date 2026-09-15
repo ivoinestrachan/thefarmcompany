@@ -246,7 +246,9 @@ function TilesConfig({ walking }: { walking: boolean }) {
   const tiles = useContext(TilesRendererContext);
   useEffect(() => {
     if (!tiles) return;
-    tiles.errorTarget = walking ? 18 : 6;
+    // Lower = refine to finer tiles. Pull the sharpest tiles the dataset has
+    // when walking (still coarse in rural areas — that's a data limit).
+    tiles.errorTarget = walking ? 3 : 6;
     const onErr = () => {}; // handled: non-fatal, keep going
     tiles.addEventListener?.("load-error", onErr);
     return () => tiles.removeEventListener?.("load-error", onErr);
