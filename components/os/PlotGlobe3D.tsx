@@ -126,6 +126,7 @@ export default function PlotGlobe3D({
         <SetupFallback />
       ) : (
         <Canvas camera={{ position: [0, 0, 400], near: 1, far: 4e7 }}>
+          <color attach="background" args={["#aecbe6"]} />
           <TilesRenderer>
             <TilesPlugin plugin={GoogleCloudAuthPlugin} args={[{ apiToken: KEY, autoRefreshToken: true }]} />
             <TilesAttributionOverlay />
@@ -147,8 +148,9 @@ export default function PlotGlobe3D({
 
           <DraftShape points={draftWorld} />
 
-          <ambientLight intensity={1} />
-          <directionalLight position={[1, 2, 1]} intensity={1.2} />
+          <ambientLight intensity={2} />
+          <hemisphereLight args={["#dcefff", "#6b5a44", 1.4]} />
+          <directionalLight position={[1, 2, 1]} intensity={1.8} />
         </Canvas>
       )}
     </div>
@@ -226,8 +228,8 @@ function FocusCamera({ lat, lon }: { lat: number; lon: number }) {
     height above the real terrain (ground-snapped each frame). */
 function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit: () => void }) {
   const tiles = useContext(TilesRendererContext);
-  const { camera, gl } = useThree();
-  const EYE = 1.7; // metres above ground
+  const { camera, gl, scene } = useThree();
+  const EYE = 2.6; // metres above ground — a bit taller so you see over the rows
 
   const s = useRef({
     ready: false,
@@ -268,6 +270,10 @@ function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit
     camera.far = 5e6;
     camera.updateProjectionMatrix();
 
+    // Haze the far, low-detail tiles into the sky for depth.
+    const prevFog = scene.fog;
+    scene.fog = new THREE.Fog(0xaecbe6, 80, 3200);
+
     const el = gl.domElement;
     const onClick = () => el.requestPointerLock?.();
     const onMove = (e: MouseEvent) => {
@@ -291,8 +297,9 @@ function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
       if (document.pointerLockElement === el) document.exitPointerLock?.();
+      scene.fog = prevFog;
     };
-  }, [tiles, lat, lon, camera, gl, onExit]);
+  }, [tiles, lat, lon, camera, gl, scene, onExit]);
 
   useFrame((_, rawDt) => {
     const st = s.current;
