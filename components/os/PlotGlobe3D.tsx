@@ -47,6 +47,21 @@ export default function PlotGlobe3D({
   const [saving, setSaving] = useState(false);
   const [walking, setWalking] = useState(false);
 
+  // Google's photoreal tiles occasionally fail a fetch (network / free-tier
+  // quota). They're non-fatal — the renderer retries — so keep the noisy
+  // console.errors from tripping the dev error overlay while this view is open.
+  useEffect(() => {
+    const orig = console.error;
+    console.error = (...args: unknown[]) => {
+      const m = String(args[0] ?? "");
+      if (m.includes("Failed to load tile") || m.includes("TilesRenderer :")) return;
+      orig(...(args as []));
+    };
+    return () => {
+      console.error = orig;
+    };
+  }, []);
+
   const addPoint = useCallback((world: THREE.Vector3, lng: number, lat: number) => {
     setDraftWorld((a) => [...a, world]);
     setDraftLL((a) => [...a, [lng, lat]]);
@@ -130,6 +145,7 @@ export default function PlotGlobe3D({
           <TilesRenderer>
             <TilesPlugin plugin={GoogleCloudAuthPlugin} args={[{ apiToken: KEY, autoRefreshToken: true }]} />
             <TilesAttributionOverlay />
+            <TilesConfig walking={walking} />
 
             <EastNorthUpFrame lat={cLat * D2R} lon={cLng * D2R} height={0}>
               <PlotOverlays field={field} cLat={cLat} cLng={cLng} />
@@ -221,6 +237,20 @@ function FocusCamera({ lat, lon }: { lat: number; lon: number }) {
     camera.lookAt(target);
     camera.updateMatrixWorld();
   }, [tiles, lat, lon, camera]);
+  return null;
+}
+
+/** Tune tile detail: coarser (fewer requests) at ground level where the tiles
+    are blurry anyway, sharper from the air. Also swallows tile load errors. */
+function TilesConfig({ walking }: { walking: boolean }) {
+  const tiles = useContext(TilesRendererContext);
+  useEffect(() => {
+    if (!tiles) return;
+    tiles.errorTarget = walking ? 18 : 6;
+    const onErr = () => {}; // handled: non-fatal, keep going
+    tiles.addEventListener?.("load-error", onErr);
+    return () => tiles.removeEventListener?.("load-error", onErr);
+  }, [tiles, walking]);
   return null;
 }
 
