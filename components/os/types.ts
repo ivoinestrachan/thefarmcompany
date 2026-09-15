@@ -72,3 +72,20 @@ export type Farm = {
 };
 
 export type SessionUser = { id: string; name: string; email: string };
+
+export type Report = {
+  id: string;
+  farmId: string;
+  lat: number;
+  lng: number;
+  crop: string | null;
+  category: string;
+  issue: string | null;
+  severity: string; // low, medium, high
+  note: string | null;
+  photo: string | null;
+  status: string; // open, assigned, resolved
+  createdAt: string;
+  createdBy: string | null;
+  assignedTo: { id: string; name: string } | null;
+};

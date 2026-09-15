@@ -9,11 +9,19 @@ import FarmMap, { type FarmMapHandle } from "./FarmMap";
 const PlotGlobe3D = dynamic(() => import("./PlotGlobe3D"), { ssr: false });
 import { ringAreaAcres } from "@/lib/geo";
 import { primaryCrop, cropColor, cropLegend, NO_CROP_COLOR } from "@/lib/crops";
-import type { Farm, Field, SessionUser } from "./types";
+import type { Farm, Field, SessionUser, Report, TeamMember } from "./types";
 
-type Mode = "view" | "draw" | "scout" | "soil" | "weed";
+type Mode = "view" | "draw" | "scout" | "soil" | "weed" | "problem";
 
-export default function Console({ user, farms }: { user: SessionUser; farms: Farm[] }) {
+export default function Console({
+  user,
+  farms,
+  reports = [],
+}: {
+  user: SessionUser;
+  farms: Farm[];
+  reports?: Report[];
+}) {
   const router = useRouter();
   const mapRef = useRef<FarmMapHandle>(null);
 
@@ -22,7 +30,13 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const [mode, setMode] = useState<Mode>("view");
   const [draftVertices, setDraftVertices] = useState(0);
 
-  const [layers, setLayers] = useState({ scouts: true, soil: true, weeds: true });
+  const [layers, setLayers] = useState({ scouts: true, soil: true, weeds: true, problems: true });
+
+  // Problem-report state
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [pendingProblem, setPendingProblem] = useState<{ lng: number; lat: number } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "assigned" | "resolved">("all");
+  const [catFilter, setCatFilter] = useState<string>("all");
 
   // Modal state
   const [showNewFarm, setShowNewFarm] = useState(farms.length === 0);
@@ -36,6 +50,30 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   const activeFarm = farms.find((f) => f.id === activeFarmId) ?? farms[0] ?? null;
   const fields = activeFarm?.fields ?? [];
   const selectedField = fields.find((f) => f.id === selectedFieldId) ?? null;
+
+  // Problems for the active farm, after status/category filters.
+  const farmReports = reports.filter((r) => r.farmId === activeFarm?.id);
+  const visibleReports = farmReports.filter(
+    (r) =>
+      (statusFilter === "all" || r.status === statusFilter) &&
+      (catFilter === "all" || r.category === catFilter)
+  );
+  const selectedReport = farmReports.find((r) => r.id === selectedReportId) ?? null;
+  const openCount = farmReports.filter((r) => r.status !== "resolved").length;
+
+  async function patchReport(body: Record<string, unknown>) {
+    await fetch("/api/mobile/reports", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    router.refresh();
+  }
+  async function deleteReport(id: string) {
+    await fetch(`/api/mobile/reports?id=${id}`, { method: "DELETE" });
+    setSelectedReportId(null);
+    router.refresh();
+  }
 
   function selectField(id: string) {
     setSelectedFieldId(id);
@@ -59,6 +97,11 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
   function startWeed() {
     if (!selectedField) return;
     setMode("weed");
+  }
+  function startProblem() {
+    setSelectedFieldId(null);
+    setSelectedReportId(null);
+    setMode("problem");
   }
 
   // Farm-wide rollup for the overview strip.
@@ -236,6 +279,13 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
               Add note
             </button>
             <button
+              onClick={startProblem}
+              disabled={mode !== "view"}
+              className="h-9 px-3.5 rounded-lg text-[13px] font-medium bg-[#c0663a] text-white hover:bg-[#a9552f] disabled:opacity-50"
+            >
+              ⚠ Report a problem
+            </button>
+            <button
               onClick={startDraw}
               disabled={mode !== "view"}
               className="h-9 px-3.5 rounded-lg text-[13px] font-medium bg-[#3f7a3f] text-white hover:bg-[#356b35] disabled:opacity-50"
@@ -272,10 +322,12 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           <FarmMap
             ref={mapRef}
             fields={fields}
+            reports={visibleReports}
             selectedFieldId={selectedFieldId}
             mode={mode}
             layers={layers}
             onSelectField={(id) => setSelectedFieldId(id)}
+            onSelectReport={(id) => { setSelectedFieldId(null); setSelectedReportId(id); }}
             onDraftChange={setDraftVertices}
             onPolygonComplete={(ring) => {
               setPendingRing(ring);
@@ -291,6 +343,10 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             }}
             onWeedPoint={(lng, lat) => {
               setPendingWeed({ lng, lat });
+              setMode("view");
+            }}
+            onProblemPoint={(lng, lat) => {
+              setPendingProblem({ lng, lat });
               setMode("view");
             }}
           />
@@ -317,6 +373,42 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
                 on={layers.weeds}
                 onClick={() => setLayers((l) => ({ ...l, weeds: !l.weeds }))}
               />
+              <LayerToggle
+                label="Problems"
+                dot="#e8863c"
+                on={layers.problems}
+                onClick={() => setLayers((l) => ({ ...l, problems: !l.problems }))}
+              />
+            </div>
+          )}
+
+          {/* Problem filters */}
+          {mode === "view" && farmReports.length > 0 && (
+            <div className="absolute top-4 right-4 z-10 rounded-lg bg-white/95 backdrop-blur px-3 py-2.5 shadow-lg ring-1 ring-black/5 w-[190px]">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">Problems · {openCount} open</span>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {(["all", "open", "assigned", "resolved"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-2 h-6 rounded-full text-[11px] capitalize ${
+                      statusFilter === s ? "bg-[#3f7a3f] text-white" : "bg-neutral-100 text-neutral-600"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={catFilter}
+                onChange={(e) => setCatFilter(e.target.value)}
+                className="mt-2 w-full h-8 rounded-lg border border-neutral-200 px-2 text-[12px] outline-none focus:border-[#3f7a3f]"
+              >
+                <option value="all">All categories</option>
+                {PROBLEM_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -340,6 +432,21 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
           )}
           {mode === "weed" && (
             <ModeBar text="Tap each spot where weeds are a problem." onCancel={cancelMode} />
+          )}
+          {mode === "problem" && (
+            <ModeBar text="Tap the map where the problem is — then add a photo & details." onCancel={cancelMode} />
+          )}
+
+          {/* Problem detail panel */}
+          {selectedReport && mode === "view" && (
+            <ReportPanel
+              report={selectedReport}
+              team={activeFarm?.team ?? []}
+              onClose={() => setSelectedReportId(null)}
+              onAssign={(userId) => patchReport({ id: selectedReport.id, assignedToId: userId })}
+              onStatus={(status) => patchReport({ id: selectedReport.id, status })}
+              onDelete={() => deleteReport(selectedReport.id)}
+            />
           )}
 
           {/* Field detail panel */}
@@ -497,6 +604,25 @@ export default function Console({ user, farms }: { user: SessionUser; farms: Far
             const data = await res.json();
             if (res.ok) {
               setPendingWeed(null);
+              router.refresh();
+            }
+            return data.error as string | undefined;
+          }}
+        />
+      )}
+
+      {pendingProblem && activeFarm && (
+        <ProblemModal
+          onClose={() => setPendingProblem(null)}
+          onCreate={async (payload) => {
+            const res = await fetch("/api/mobile/reports", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...payload, farmId: activeFarm.id, ...pendingProblem }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+              setPendingProblem(null);
               router.refresh();
             }
             return data.error as string | undefined;
@@ -1485,6 +1611,203 @@ function WeedModal({
           className="w-full h-10 rounded-lg bg-[#c0392b] text-white text-[14px] font-medium disabled:opacity-50"
         >
           {busy ? "Saving…" : "Save weed spot"}
+        </button>
+      </div>
+    </Shell>
+  );
+}
+
+/* ------------------------------ problems ------------------------------- */
+
+const PROBLEM_CATEGORIES = [
+  { value: "irrigation", label: "💧 Irrigation leak" },
+  { value: "fence", label: "🚧 Broken fence" },
+  { value: "pest", label: "🐛 Pest problem" },
+  { value: "disease", label: "🍂 Crop disease" },
+  { value: "flooding", label: "🌊 Flooding" },
+  { value: "drainage", label: "🕳 Drainage issue" },
+  { value: "equipment", label: "🚜 Equipment problem" },
+  { value: "livestock", label: "🐄 Livestock issue" },
+  { value: "tree", label: "🌳 Fallen tree" },
+  { value: "access", label: "🛣 Road / access" },
+  { value: "other", label: "❓ Other" },
+];
+const catLabel = (v: string) => PROBLEM_CATEGORIES.find((c) => c.value === v)?.label ?? "❓ Other";
+const sevColor = (s: string) => (s === "high" ? "#e5443c" : s === "low" ? "#e0c020" : "#e8863c");
+const statusLabel = (s: string) => (s === "resolved" ? "Resolved" : s === "assigned" ? "Assigned" : "Open");
+
+function ReportPanel({
+  report,
+  team,
+  onClose,
+  onAssign,
+  onStatus,
+  onDelete,
+}: {
+  report: Report;
+  team: TeamMember[];
+  onClose: () => void;
+  onAssign: (userId: string | null) => void;
+  onStatus: (status: string) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="absolute top-4 right-4 bottom-4 w-[340px] z-10 flex flex-col rounded-xl bg-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.4)] ring-1 ring-black/5 overflow-hidden">
+      {report.photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={report.photo} alt="problem" className="w-full h-44 object-cover" />
+      ) : (
+        <div className="w-full h-16 bg-neutral-100" />
+      )}
+      <div className="flex items-start justify-between px-4 pt-3">
+        <div className="min-w-0">
+          <h2 className="text-[16px] font-semibold tracking-tight truncate">
+            {report.issue || catLabel(report.category)}
+          </h2>
+          <p className="text-[12px] text-neutral-400">{catLabel(report.category)}</p>
+        </div>
+        <button onClick={onClose} className="text-neutral-300 hover:text-neutral-600 text-lg leading-none">✕</button>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 mt-2">
+        <span className="text-[11px] px-2 py-0.5 rounded-full text-white capitalize" style={{ background: sevColor(report.severity) }}>
+          {report.severity}
+        </span>
+        <span className="text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
+          {statusLabel(report.status)}
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 text-[13px]">
+        {report.note && <p className="text-neutral-600">{report.note}</p>}
+        {report.crop && <Row label="Crop" value={report.crop} />}
+        <Row label="Reported by" value={report.createdBy ?? "—"} />
+        <Row label="When" value={new Date(report.createdAt).toLocaleString()} />
+        <Row label="Location" value={`${report.lat.toFixed(5)}, ${report.lng.toFixed(5)}`} />
+
+        <div>
+          <label className="text-[11px] font-medium uppercase tracking-wide text-neutral-400">Assigned to</label>
+          <select
+            value={report.assignedTo?.id ?? ""}
+            onChange={(e) => onAssign(e.target.value || null)}
+            className="mt-1 w-full h-9 rounded-lg border border-neutral-200 px-2 text-[13px] outline-none focus:border-[#3f7a3f]"
+          >
+            <option value="">Unassigned</option>
+            {team.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="border-t border-neutral-100 p-3 flex items-center gap-2">
+        {report.status !== "resolved" ? (
+          <button onClick={() => onStatus("resolved")} className="flex-1 h-9 rounded-lg bg-[#3f7a3f] text-white text-[13px] font-medium">
+            Mark resolved
+          </button>
+        ) : (
+          <button onClick={() => onStatus("open")} className="flex-1 h-9 rounded-lg border border-neutral-200 text-neutral-700 text-[13px] font-medium">
+            Reopen
+          </button>
+        )}
+        <button onClick={onDelete} className="h-9 px-3 rounded-lg text-[13px] text-red-600 hover:bg-red-50">Delete</button>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <span className="text-neutral-400">{label}</span>
+      <span className="text-neutral-700 text-right">{value}</span>
+    </div>
+  );
+}
+
+function ProblemModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (p: { category: string; severity: string; issue: string; note: string; photo: string | null }) => Promise<string | undefined>;
+}) {
+  const [category, setCategory] = useState("disease");
+  const [severity, setSeverity] = useState("medium");
+  const [issue, setIssue] = useState("");
+  const [note, setNote] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhoto(await downscaleImage(file, 1280, 0.8));
+  }
+
+  return (
+    <Shell onClose={onClose}>
+      <h2 className="text-[19px] font-semibold tracking-tight">Report a problem</h2>
+      <p className="text-[13px] text-neutral-500 mt-1">Add a photo and what&apos;s wrong at this spot.</p>
+
+      <div className="mt-4 space-y-3">
+        {photo ? (
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo} alt="problem" className="w-full h-40 object-cover rounded-lg" />
+            <button onClick={() => setPhoto(null)} className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 text-white text-sm">✕</button>
+          </div>
+        ) : (
+          <label className="flex h-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-neutral-200 text-[13px] text-neutral-400 hover:border-[#c0663a] hover:text-[#c0663a]">
+            Add a photo
+            <input type="file" accept="image/*" capture="environment" onChange={onPhoto} className="hidden" />
+          </label>
+        )}
+
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]">
+          {PROBLEM_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+
+        <input
+          value={issue}
+          onChange={(e) => setIssue(e.target.value)}
+          placeholder="Short title — e.g. Leaking dripline at row 12"
+          className="w-full h-10 rounded-lg border border-neutral-200 px-3 text-[14px] outline-none focus:border-[#3f7a3f]"
+        />
+
+        <div className="grid grid-cols-3 gap-1.5">
+          {["low", "medium", "high"].map((s) => (
+            <button
+              key={s}
+              onClick={() => setSeverity(s)}
+              className="h-9 rounded-lg text-[12.5px] capitalize border"
+              style={{ background: severity === s ? sevColor(s) : "#fff", borderColor: severity === s ? sevColor(s) : "#e5e5e5", color: severity === s ? "#fff" : "#525252" }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Notes (optional)"
+          rows={2}
+          className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-[13px] outline-none focus:border-[#3f7a3f] resize-none"
+        />
+
+        {error && <p className="text-[12.5px] text-red-600">{error}</p>}
+        <button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            const err = await onCreate({ category, severity, issue, note, photo });
+            if (err) { setError(err); setBusy(false); }
+          }}
+          className="w-full h-10 rounded-lg bg-[#c0663a] text-white text-[14px] font-medium disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Add problem to map"}
         </button>
       </div>
     </Shell>

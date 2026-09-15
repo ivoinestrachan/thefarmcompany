@@ -8,14 +8,20 @@ const clean = (v: unknown, max = 500) =>
 const SEVERITY = new Set(["low", "medium", "high"]);
 const MAX_PHOTO = 1_800_000;
 
+const CATEGORIES = new Set([
+  "irrigation", "fence", "pest", "disease", "flooding", "drainage",
+  "equipment", "livestock", "tree", "access", "other",
+]);
+
 function serialize(r: {
   id: string; farmId: string; lat: number; lng: number; crop: string | null;
-  issue: string | null; severity: string; note: string | null; photo: string | null;
+  category: string; issue: string | null; severity: string; note: string | null; photo: string | null;
   status: string; createdAt: Date;
   createdBy: { name: string } | null; assignedTo: { id: string; name: string } | null;
 }) {
   return {
-    id: r.id, farmId: r.farmId, lat: r.lat, lng: r.lng, crop: r.crop, issue: r.issue,
+    id: r.id, farmId: r.farmId, lat: r.lat, lng: r.lng, crop: r.crop,
+    category: r.category, issue: r.issue,
     severity: r.severity, note: r.note, photo: r.photo, status: r.status,
     createdAt: r.createdAt.toISOString(),
     createdBy: r.createdBy?.name ?? null,
@@ -62,9 +68,10 @@ export async function POST(req: Request) {
   const farm = await prisma.farm.findFirst({ where: { id: farmId, ...farmAccessWhere(user.id) } });
   if (!farm) return NextResponse.json({ error: "Farm not found." }, { status: 404 });
 
+  const category = CATEGORIES.has(String(body.category)) ? String(body.category) : "other";
   const report = await prisma.report.create({
     data: {
-      farmId, createdById: user.id, lat, lng, severity, photo,
+      farmId, createdById: user.id, lat, lng, severity, photo, category,
       crop: clean(body.crop, 120) || null,
       issue: clean(body.issue, 160) || null,
       note: clean(body.note, 500) || null,
@@ -72,6 +79,18 @@ export async function POST(req: Request) {
     include: { createdBy: true, assignedTo: true },
   });
   return NextResponse.json({ report: serialize(report) });
+}
+
+export async function DELETE(req: Request) {
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const id = clean(new URL(req.url).searchParams.get("id"), 40);
+  const existing = await prisma.report.findFirst({ where: { id, farm: farmAccessWhere(user.id) } });
+  if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  await prisma.report.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }
 
 // Assign to a laborer / change status.

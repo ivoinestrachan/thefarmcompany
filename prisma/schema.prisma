@@ -54,6 +54,7 @@ model Report {
   lat          Float
   lng          Float
   crop         String?
+  category     String   @default("other") // irrigation, fence, pest, disease, flooding, drainage, equipment, livestock, tree, access, other
   issue        String? // suspected disease / what's wrong
   severity     String   @default("medium") // low, medium, high
   note         String?

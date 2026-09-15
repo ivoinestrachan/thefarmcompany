@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getUser } from "@/lib/auth";
 import { farmAccessWhere } from "@/lib/access";
 import Console from "@/components/os/Console";
-import type { Farm } from "@/components/os/types";
+import type { Farm, Report } from "@/components/os/types";
 
 export const dynamic = "force-dynamic";
 
@@ -94,5 +94,34 @@ export default async function OsPage() {
     })),
   }));
 
-  return <Console user={{ id: user.id, name: user.name, email: user.email }} farms={data} />;
+  // Disease/problem reports (created on mobile or web) across the user's farms.
+  const reportRows = await prisma.report.findMany({
+    where: { farm: farmAccessWhere(user.id) },
+    orderBy: { createdAt: "desc" },
+    include: { createdBy: true, assignedTo: true },
+  });
+  const reports: Report[] = reportRows.map((r) => ({
+    id: r.id,
+    farmId: r.farmId,
+    lat: r.lat,
+    lng: r.lng,
+    crop: r.crop,
+    category: r.category,
+    issue: r.issue,
+    severity: r.severity,
+    note: r.note,
+    photo: r.photo,
+    status: r.status,
+    createdAt: r.createdAt.toISOString(),
+    createdBy: r.createdBy?.name ?? null,
+    assignedTo: r.assignedTo ? { id: r.assignedTo.id, name: r.assignedTo.name } : null,
+  }));
+
+  return (
+    <Console
+      user={{ id: user.id, name: user.name, email: user.email }}
+      farms={data}
+      reports={reports}
+    />
+  );
 }

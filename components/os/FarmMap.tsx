@@ -8,7 +8,7 @@ import {
 } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { Field } from "./types";
+import type { Field, Report } from "./types";
 import { primaryCrop, cropColor, NO_CROP_COLOR } from "@/lib/crops";
 
 export type FarmMapHandle = {
@@ -17,21 +17,24 @@ export type FarmMapHandle = {
   flyToField: (field: Field) => void;
 };
 
-type Mode = "view" | "draw" | "scout" | "soil" | "weed";
+type Mode = "view" | "draw" | "scout" | "soil" | "weed" | "problem";
 
-type LayerToggles = { scouts: boolean; soil: boolean; weeds: boolean };
+type LayerToggles = { scouts: boolean; soil: boolean; weeds: boolean; problems: boolean };
 
 type Props = {
   fields: Field[];
+  reports: Report[];
   selectedFieldId: string | null;
   mode: Mode;
   layers: LayerToggles;
   onSelectField: (id: string) => void;
+  onSelectReport: (id: string) => void;
   onDraftChange: (vertices: number) => void;
   onPolygonComplete: (ring: number[][]) => void;
   onScoutPoint: (lng: number, lat: number) => void;
   onSoilPoint: (lng: number, lat: number) => void;
   onWeedPoint: (lng: number, lat: number) => void;
+  onProblemPoint: (lng: number, lat: number) => void;
 };
 
 // Free Esri World Imagery — satellite raster, no API key required.
@@ -104,8 +107,22 @@ const weedsToGeoJSON = (fields: Field[]) => ({
   ),
 });
 
+const SEV_COLOR: Record<string, string> = { high: "#e5443c", medium: "#e8863c", low: "#e0c020" };
+const reportsToGeoJSON = (reports: Report[]) => ({
+  type: "FeatureCollection" as const,
+  features: reports.map((r) => ({
+    type: "Feature" as const,
+    properties: {
+      id: r.id,
+      color: r.status === "resolved" ? "#4fd06a" : SEV_COLOR[r.severity] ?? "#e8863c",
+      resolved: r.status === "resolved" ? 1 : 0,
+    },
+    geometry: { type: "Point" as const, coordinates: [r.lng, r.lat] },
+  })),
+});
+
 const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
-  { fields, selectedFieldId, mode, layers, onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint },
+  { fields, reports, selectedFieldId, mode, layers, onSelectField, onSelectReport, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint, onProblemPoint },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -114,9 +131,9 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
   const draftRef = useRef<number[][]>([]);
   // Keep latest props/mode accessible inside stable event handlers.
   const modeRef = useRef(mode);
-  const cbRef = useRef({ onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint });
+  const cbRef = useRef({ onSelectField, onSelectReport, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint, onProblemPoint });
   modeRef.current = mode;
-  cbRef.current = { onSelectField, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint };
+  cbRef.current = { onSelectField, onSelectReport, onDraftChange, onPolygonComplete, onScoutPoint, onSoilPoint, onWeedPoint, onProblemPoint };
 
   const renderDraft = () => {
     const map = mapRef.current;
@@ -256,6 +273,31 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         },
       });
 
+      // Problem reports — the big, high-contrast markers (severity colour,
+      // green when resolved), drawn above everything else.
+      map.addSource("reports", { type: "geojson", data: reportsToGeoJSON(reports) });
+      map.addLayer({
+        id: "reports-halo",
+        type: "circle",
+        source: "reports",
+        paint: {
+          "circle-radius": 13,
+          "circle-color": ["get", "color"],
+          "circle-opacity": ["case", ["==", ["get", "resolved"], 1], 0.15, 0.25],
+        },
+      });
+      map.addLayer({
+        id: "reports-pt",
+        type: "circle",
+        source: "reports",
+        paint: {
+          "circle-radius": 8,
+          "circle-color": ["get", "color"],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 3,
+        },
+      });
+
       map.addSource("draft", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({
         id: "draft-line",
@@ -295,6 +337,16 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         cbRef.current.onWeedPoint(e.lngLat.lng, e.lngLat.lat);
         return;
       }
+      if (m === "problem") {
+        cbRef.current.onProblemPoint(e.lngLat.lng, e.lngLat.lat);
+        return;
+      }
+      // Problem markers take priority over field selection.
+      const rHit = map.queryRenderedFeatures(e.point, { layers: ["reports-pt"] });
+      if (rHit.length) {
+        cbRef.current.onSelectReport(rHit[0].properties?.id as string);
+        return;
+      }
       const hit = map.queryRenderedFeatures(e.point, { layers: ["fields-fill"] });
       if (hit.length) cbRef.current.onSelectField(hit[0].properties?.id as string);
     });
@@ -302,9 +354,9 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
     map.on("mousemove", (e) => {
       const m = modeRef.current;
       map.getCanvas().style.cursor =
-        m === "draw" || m === "scout" || m === "soil" || m === "weed" ? "crosshair" : "";
+        m === "draw" || m === "scout" || m === "soil" || m === "weed" || m === "problem" ? "crosshair" : "";
       if (m === "view") {
-        const hit = map.queryRenderedFeatures(e.point, { layers: ["fields-fill"] });
+        const hit = map.queryRenderedFeatures(e.point, { layers: ["reports-pt", "fields-fill"] });
         map.getCanvas().style.cursor = hit.length ? "pointer" : "";
       }
     });
@@ -342,6 +394,13 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
     (map.getSource("weeds") as maplibregl.GeoJSONSource | undefined)?.setData(weedsToGeoJSON(fields));
   }, [fields, selectedFieldId]);
 
+  // Sync problem reports when they change (or get filtered).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    (map.getSource("reports") as maplibregl.GeoJSONSource | undefined)?.setData(reportsToGeoJSON(reports));
+  }, [reports]);
+
   // Re-fit the view when the set of fields changes (e.g. switching farms).
   const fieldKeyRef = useRef("");
   useEffect(() => {
@@ -371,6 +430,9 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
       map.setLayoutProperty("soil-pt", "visibility", layers.soil ? "visible" : "none");
     if (map.getLayer("weeds-pt"))
       map.setLayoutProperty("weeds-pt", "visibility", layers.weeds ? "visible" : "none");
+    for (const id of ["reports-pt", "reports-halo"])
+      if (map.getLayer(id))
+        map.setLayoutProperty(id, "visibility", layers.problems ? "visible" : "none");
   }, [layers]);
 
   return <div ref={containerRef} className="h-full w-full" />;
