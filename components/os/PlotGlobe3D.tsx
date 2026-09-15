@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import {
   TilesRenderer,
@@ -45,6 +45,7 @@ export default function PlotGlobe3D({
   const [draftWorld, setDraftWorld] = useState<THREE.Vector3[]>([]);
   const [draftLL, setDraftLL] = useState<number[][]>([]);
   const [saving, setSaving] = useState(false);
+  const [walking, setWalking] = useState(false);
 
   const addPoint = useCallback((world: THREE.Vector3, lng: number, lat: number) => {
     setDraftWorld((a) => [...a, world]);
@@ -69,13 +70,25 @@ export default function PlotGlobe3D({
         <div>
           <div className="text-[15px] font-semibold tracking-tight">{field.name} · Photoreal</div>
           <div className="text-[11.5px] text-white/60">
-            {drawing
+            {walking
+              ? "Walking · click to look around · W A S D to move · Shift to run · Esc to exit"
+              : drawing
               ? `Click the ground to trace a plot — ${draftLL.length} point${draftLL.length === 1 ? "" : "s"}`
               : "Google Photorealistic 3D Tiles · drag to orbit, scroll to fly in"}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {KEY && onSaveShape && !drawing && (
+          {KEY && !drawing && (
+            <button
+              onClick={() => setWalking((w) => !w)}
+              className={`h-9 px-4 rounded-lg text-[13px] font-medium ${
+                walking ? "bg-white/20 hover:bg-white/30" : "bg-[#2f5a2f] hover:bg-[#274c27]"
+              }`}
+            >
+              {walking ? "Exit walk" : "🚶 Walk the field"}
+            </button>
+          )}
+          {KEY && onSaveShape && !drawing && !walking && (
             <button
               onClick={() => setDrawing(true)}
               className="h-9 px-4 rounded-lg bg-[#3f7a3f] hover:bg-[#356b35] text-[13px] font-medium"
@@ -121,9 +134,15 @@ export default function PlotGlobe3D({
               <PlotOverlays field={field} cLat={cLat} cLng={cLng} />
             </EastNorthUpFrame>
 
-            <FocusCamera lat={cLat} lon={cLng} />
-            <DrawController active={drawing} onPoint={addPoint} />
-            <GlobeControls />
+            {walking ? (
+              <WalkController lat={cLat} lon={cLng} onExit={() => setWalking(false)} />
+            ) : (
+              <>
+                <FocusCamera lat={cLat} lon={cLng} />
+                <DrawController active={drawing} onPoint={addPoint} />
+                <GlobeControls />
+              </>
+            )}
           </TilesRenderer>
 
           <DraftShape points={draftWorld} />
@@ -200,6 +219,100 @@ function FocusCamera({ lat, lon }: { lat: number; lon: number }) {
     camera.lookAt(target);
     camera.updateMatrixWorld();
   }, [tiles, lat, lon, camera]);
+  return null;
+}
+
+/** First-person "walk the field": WASD move + mouse-look, camera held at eye
+    height above the real terrain (ground-snapped each frame). */
+function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit: () => void }) {
+  const tiles = useContext(TilesRendererContext);
+  const { camera, gl } = useThree();
+  const EYE = 1.7; // metres above ground
+
+  const s = useRef({
+    ready: false,
+    pos: new THREE.Vector3(),
+    east: new THREE.Vector3(),
+    north: new THREE.Vector3(),
+    up: new THREE.Vector3(),
+    yaw: 0, // 0 = facing north
+    pitch: -0.05,
+    keys: new Set<string>(),
+    ray: new THREE.Raycaster(),
+  });
+
+  // Set up starting position + local basis, and camera clipping for ground scale.
+  useEffect(() => {
+    if (!tiles) return;
+    const ell = tiles.ellipsoid;
+    const m = new THREE.Matrix4();
+    ell.getOrientedEastNorthUpFrame(lat * D2R, lon * D2R, 0, 0, 0, 0, m);
+    const st = s.current;
+    st.east.setFromMatrixColumn(m, 0).transformDirection(tiles.group.matrixWorld);
+    st.north.setFromMatrixColumn(m, 1).transformDirection(tiles.group.matrixWorld);
+    st.up.setFromMatrixColumn(m, 2).transformDirection(tiles.group.matrixWorld);
+    const ecef = new THREE.Vector3();
+    ell.getCartographicToPosition(lat * D2R, lon * D2R, 2, ecef);
+    st.pos.copy(ecef).applyMatrix4(tiles.group.matrixWorld);
+    st.ready = true;
+
+    camera.near = 0.3;
+    camera.far = 5e6;
+    camera.updateProjectionMatrix();
+
+    const el = gl.domElement;
+    const onClick = () => el.requestPointerLock?.();
+    const onMove = (e: MouseEvent) => {
+      if (document.pointerLockElement !== el) return;
+      st.yaw -= e.movementX * 0.0025;
+      st.pitch = Math.max(-1.35, Math.min(1.35, st.pitch - e.movementY * 0.0025));
+    };
+    const onDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onExit(); return; }
+      st.keys.add(e.key.toLowerCase());
+    };
+    const onUp = (e: KeyboardEvent) => st.keys.delete(e.key.toLowerCase());
+
+    el.addEventListener("click", onClick);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => {
+      el.removeEventListener("click", onClick);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      if (document.pointerLockElement === el) document.exitPointerLock?.();
+    };
+  }, [tiles, lat, lon, camera, gl, onExit]);
+
+  useFrame((_, dt) => {
+    const st = s.current;
+    if (!st.ready || !tiles) return;
+    const speed = (st.keys.has("shift") ? 14 : 5) * Math.min(dt, 0.05);
+    const fwd = (st.keys.has("w") || st.keys.has("arrowup") ? 1 : 0) - (st.keys.has("s") || st.keys.has("arrowdown") ? 1 : 0);
+    const strafe = (st.keys.has("d") || st.keys.has("arrowright") ? 1 : 0) - (st.keys.has("a") || st.keys.has("arrowleft") ? 1 : 0);
+
+    const cos = Math.cos(st.yaw), sin = Math.sin(st.yaw);
+    const horiz = new THREE.Vector3().addScaledVector(st.north, cos).addScaledVector(st.east, sin);
+    const right = new THREE.Vector3().addScaledVector(st.east, cos).addScaledVector(st.north, -sin);
+    if (fwd) st.pos.addScaledVector(horiz, fwd * speed);
+    if (strafe) st.pos.addScaledVector(right, strafe * speed);
+
+    // Snap to ground: cast down from above the current spot onto the tiles.
+    const from = st.pos.clone().addScaledVector(st.up, 60);
+    st.ray.set(from, st.up.clone().multiplyScalar(-1));
+    st.ray.far = 400;
+    const hits = st.ray.intersectObject(tiles.group, true);
+    if (hits.length) st.pos.copy(hits[0].point).addScaledVector(st.up, EYE);
+
+    const look = horiz.clone().multiplyScalar(Math.cos(st.pitch)).addScaledVector(st.up, Math.sin(st.pitch));
+    camera.position.copy(st.pos);
+    camera.up.copy(st.up);
+    camera.lookAt(st.pos.clone().add(look));
+    camera.updateMatrixWorld();
+  });
+
   return null;
 }
 
