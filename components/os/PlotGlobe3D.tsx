@@ -261,7 +261,7 @@ function TilesConfig({ walking }: { walking: boolean }) {
 function WalkController({ lat, lon, onExit }: { lat: number; lon: number; onExit: () => void }) {
   const tiles = useContext(TilesRendererContext);
   const { camera, gl, scene } = useThree();
-  const EYE = 2.6; // metres above ground — a bit taller so you see over the rows
+  const EYE = 5; // metres above ground — a raised vantage over the rows
 
   const s = useRef({
     ready: false,
