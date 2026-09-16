@@ -30,7 +30,7 @@ export default function Console({
   const [mode, setMode] = useState<Mode>("view");
   const [draftVertices, setDraftVertices] = useState(0);
 
-  const [layers, setLayers] = useState({ scouts: true, soil: true, weeds: true, problems: true });
+  const [layers, setLayers] = useState({ scouts: true, soil: true, weeds: true, problems: true, vigor: false });
 
   // Problem-report state
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
@@ -379,6 +379,30 @@ export default function Console({
                 on={layers.problems}
                 onClick={() => setLayers((l) => ({ ...l, problems: !l.problems }))}
               />
+              <div className="my-1 h-px bg-neutral-100" />
+              <LayerToggle
+                label="Vine vigor"
+                dot="#4fd06a"
+                on={layers.vigor}
+                onClick={() => setLayers((l) => ({ ...l, vigor: !l.vigor }))}
+              />
+            </div>
+          )}
+
+          {/* Vigor legend */}
+          {mode === "view" && layers.vigor && (
+            <div className="absolute bottom-4 left-[190px] z-10 rounded-lg bg-white/95 backdrop-blur px-3 py-2.5 shadow-lg ring-1 ring-black/5">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">Canopy vigor</span>
+              {selectedField ? (
+                <>
+                  <div className="mt-1.5 h-2 w-40 rounded-full" style={{ background: "linear-gradient(90deg,#d7191c,#fdae61,#ffffbf,#a6d96a,#1a9641)" }} />
+                  <div className="flex justify-between text-[10px] text-neutral-400 mt-0.5">
+                    <span>Stressed</span><span>Healthy</span>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-1 text-[11.5px] text-neutral-500 w-40">Click a field to map its canopy vigor.</p>
+              )}
             </div>
           )}
 
