@@ -14,6 +14,7 @@ import {
 import { GoogleCloudAuthPlugin } from "3d-tiles-renderer/plugins";
 import { Html } from "@react-three/drei";
 import type { Field } from "./types";
+import { computeVigor, type VigorResult } from "@/lib/vigor";
 
 /* Photoreal 3D of the actual plot using Google Photorealistic 3D Tiles — the
    real captured mesh of the world (like Google Earth), with our farm data
@@ -54,7 +55,13 @@ export default function PlotGlobe3D({
     const orig = console.error;
     console.error = (...args: unknown[]) => {
       const m = String(args[0] ?? "");
-      if (m.includes("Failed to load tile") || m.includes("TilesRenderer :")) return;
+      if (
+        m.includes("Failed to load tile") ||
+        m.includes("TilesRenderer :") ||
+        m.includes("is not valid JSON") ||
+        m.includes("glTF")
+      )
+        return;
       orig(...(args as []));
     };
     return () => {
@@ -149,6 +156,7 @@ export default function PlotGlobe3D({
 
             <EastNorthUpFrame lat={cLat * D2R} lon={cLng * D2R} height={0}>
               <PlotOverlays field={field} cLat={cLat} cLng={cLng} />
+              <VigorOverlay field={field} cLat={cLat} cLng={cLng} />
             </EastNorthUpFrame>
 
             {walking ? (
@@ -174,6 +182,67 @@ export default function PlotGlobe3D({
 }
 
 /** Anchor our farm data in the plot's local East-North-Up frame (metres). */
+/** Drapes the vine-vigor heatmap (from NAIP) as a flat quad over the field in
+    3D, plus the stressed-spot markers. Drawn on top so it's always visible. */
+function VigorOverlay({ field, cLat, cLng }: { field: Field; cLat: number; cLng: number }) {
+  const [res, setRes] = useState<VigorResult | null>(null);
+  const [tex, setTex] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    computeVigor([field])
+      .then((r) => {
+        if (!live) return;
+        setRes(r);
+        new THREE.TextureLoader().load(r.url, (t) => {
+          t.colorSpace = THREE.SRGBColorSpace;
+          if (live) setTex(t);
+        });
+      })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [field]);
+
+  const geom = useMemo(() => {
+    if (!res) return null;
+    const b = res.bounds;
+    const P = [
+      enuOffset(b.minLng, b.maxLat, cLng, cLat), // TL
+      enuOffset(b.maxLng, b.maxLat, cLng, cLat), // TR
+      enuOffset(b.maxLng, b.minLat, cLng, cLat), // BR
+      enuOffset(b.minLng, b.minLat, cLng, cLat), // BL
+    ];
+    const z = 1;
+    const v = (i: number) => [P[i][0], P[i][1], z];
+    const verts = new Float32Array([...v(0), ...v(3), ...v(2), ...v(0), ...v(2), ...v(1)]);
+    const uv = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+    g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    return g;
+  }, [res, cLat, cLng]);
+
+  if (!res || !tex || !geom) return null;
+  return (
+    <group>
+      <mesh geometry={geom} renderOrder={20}>
+        <meshBasicMaterial map={tex} transparent depthTest={false} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+      {res.points.map((p, i) => {
+        const [e, n] = enuOffset(p.lng, p.lat, cLng, cLat);
+        return (
+          <Html key={i} position={[e, n, 5]} center distanceFactor={90}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{ width: 20, height: 20, borderRadius: 9999, background: p.color, border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,.5)" }} />
+              <div style={{ marginTop: 1, font: "600 11px system-ui", color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,.9)" }}>{p.score}</div>
+            </div>
+          </Html>
+        );
+      })}
+    </group>
+  );
+}
+
 function PlotOverlays({ field, cLat, cLng }: { field: Field; cLat: number; cLng: number }) {
   const ring = field.geometry.coordinates[0].map(([lng, lat]) => {
     const [e, n] = enuOffset(lng, lat, cLng, cLat);
