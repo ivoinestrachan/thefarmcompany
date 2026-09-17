@@ -45,7 +45,8 @@ function vigorColor(t: number): [number, number, number] {
   return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
-async function computeVigor(fields: Field[]): Promise<{ url: string; coordinates: [[number,number],[number,number],[number,number],[number,number]] }> {
+type VigorPoint = { lng: number; lat: number; score: number; color: string };
+async function computeVigor(fields: Field[]): Promise<{ url: string; coordinates: [[number,number],[number,number],[number,number],[number,number]]; points: VigorPoint[] }> {
   const S = 1024;
   const all = fields.flatMap((f) => f.geometry.coordinates[0]);
   const lngs = all.map((p) => p[0]), lats = all.map((p) => p[1]);
@@ -106,9 +107,39 @@ async function computeVigor(fields: Field[]): Promise<{ url: string; coordinates
   }
   octx.putImageData(outImg, 0, 0);
 
+  // Pick a few of the most-stressed, spread-out spots to flag as problems.
+  const cand: { gx: number; gy: number; t: number }[] = [];
+  const step = Math.max(20, Math.floor(S / 16));
+  for (let gy = step / 2; gy < S; gy += step)
+    for (let gx = step / 2; gx < S; gx += step) {
+      const i = Math.floor(gy) * S + Math.floor(gx);
+      if (maskData[i * 4 + 3] < 128 || Number.isNaN(vari[i])) continue;
+      cand.push({ gx, gy, t: Math.max(0, Math.min(1, (vari[i] - lo) / span)) });
+    }
+  cand.sort((a, b) => a.t - b.t); // most stressed first
+  const chosen: typeof cand = [];
+  const minPx = S * 0.13;
+  for (const c of cand) {
+    if (c.t > 0.45) break; // only genuinely stressed spots
+    if (chosen.every((o) => Math.hypot(o.gx - c.gx, o.gy - c.gy) > minPx)) {
+      chosen.push(c);
+      if (chosen.length >= 5) break;
+    }
+  }
+  const points: VigorPoint[] = chosen.map((c) => {
+    const [cr, cg, cb] = vigorColor(c.t);
+    return {
+      lng: minLng + (c.gx / S) * (maxLng - minLng),
+      lat: maxLat - (c.gy / S) * (maxLat - minLat),
+      score: Math.round(c.t * 100),
+      color: `rgb(${cr | 0},${cg | 0},${cb | 0})`,
+    };
+  });
+
   return {
     url: out.toDataURL("image/png"),
     coordinates: [[minLng, maxLat], [maxLng, maxLat], [maxLng, minLat], [minLng, minLat]],
+    points,
   };
 }
 
@@ -526,47 +557,60 @@ const FarmMap = forwardRef<FarmMapHandle, Props>(function FarmMap(
         map.setLayoutProperty(id, "visibility", layers.problems ? "visible" : "none");
   }, [layers]);
 
-  // Vine-vigor heatmap (computed from NAIP) for the SELECTED field — the
-  // precision-ag "inspect one block" workflow. Sharp NAIP at field scale.
+  // Vine-vigor heatmap (computed from NAIP) for the SELECTED field, plus a few
+  // markers on the most-stressed spots of the block.
   const vigorKeyRef = useRef("");
+  const vigorMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const clearVigorMarkers = () => {
+    vigorMarkersRef.current.forEach((m) => m.remove());
+    vigorMarkersRef.current = [];
+  };
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     const target = fields.filter((f) => f.id === selectedFieldId);
     if (!layers.vigor || target.length === 0) {
       if (map.getLayer("vigor-lyr")) map.setLayoutProperty("vigor-lyr", "visibility", "none");
+      clearVigorMarkers();
       return;
     }
     const key = target.map((f) => f.id).join(",");
-    const show = (url: string, coordinates: [[number,number],[number,number],[number,number],[number,number]]) => {
+    const show = (
+      url: string,
+      coordinates: [[number, number], [number, number], [number, number], [number, number]],
+      points: VigorPoint[]
+    ) => {
       const m = mapRef.current;
       if (!m) return;
       const existing = m.getSource("vigor") as maplibregl.ImageSource | undefined;
-      if (existing) {
-        existing.updateImage({ url, coordinates });
-      } else {
+      if (existing) existing.updateImage({ url, coordinates });
+      else {
         m.addSource("vigor", { type: "image", url, coordinates });
         m.addLayer(
-          {
-            id: "vigor-lyr",
-            type: "raster",
-            source: "vigor",
-            paint: { "raster-opacity": 0.8, "raster-resampling": "nearest" },
-          },
+          { id: "vigor-lyr", type: "raster", source: "vigor", paint: { "raster-opacity": 0.8, "raster-resampling": "nearest" } },
           m.getLayer("fields-line") ? "fields-line" : undefined
         );
       }
-      if (m.getLayer("vigor-lyr")) m.setLayoutProperty("vigor-lyr", "visibility", "visible");
+      m.setLayoutProperty("vigor-lyr", "visibility", "visible");
+      // Stressed-spot markers.
+      clearVigorMarkers();
+      for (const p of points) {
+        const el = document.createElement("div");
+        el.style.cssText = "display:flex;flex-direction:column;align-items:center;cursor:default";
+        const dot = document.createElement("div");
+        dot.style.cssText = `width:22px;height:22px;border-radius:9999px;background:${p.color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)`;
+        const lbl = document.createElement("div");
+        lbl.textContent = String(p.score);
+        lbl.style.cssText = "margin-top:1px;font:600 11px system-ui;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9)";
+        el.append(dot, lbl);
+        vigorMarkersRef.current.push(new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(m));
+      }
     };
 
-    if (key === vigorKeyRef.current && map.getSource("vigor")) {
-      if (map.getLayer("vigor-lyr")) map.setLayoutProperty("vigor-lyr", "visibility", "visible");
-      return;
-    }
     computeVigor(target)
-      .then(({ url, coordinates }) => {
+      .then(({ url, coordinates, points }) => {
         vigorKeyRef.current = key;
-        show(url, coordinates);
+        show(url, coordinates, points);
       })
       .catch(() => {});
   }, [layers.vigor, fields, selectedFieldId]);
