@@ -14,6 +14,7 @@ import {
 import { GoogleCloudAuthPlugin } from "3d-tiles-renderer/plugins";
 import { Html } from "@react-three/drei";
 import type { Field } from "./types";
+import { useLayoutEffect } from "react";
 import { computeVigor, type VigorResult } from "@/lib/vigor";
 
 /* Photoreal 3D of the actual plot using Google Photorealistic 3D Tiles — the
@@ -186,52 +187,21 @@ export default function PlotGlobe3D({
     3D, plus the stressed-spot markers. Drawn on top so it's always visible. */
 function VigorOverlay({ field, cLat, cLng }: { field: Field; cLat: number; cLng: number }) {
   const [res, setRes] = useState<VigorResult | null>(null);
-  const [tex, setTex] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     let live = true;
-    computeVigor([field])
-      .then((r) => {
-        if (!live) return;
-        setRes(r);
-        new THREE.TextureLoader().load(r.url, (t) => {
-          t.colorSpace = THREE.SRGBColorSpace;
-          if (live) setTex(t);
-        });
-      })
-      .catch(() => {});
+    computeVigor([field]).then((r) => live && setRes(r)).catch(() => {});
     return () => { live = false; };
   }, [field]);
 
-  const geom = useMemo(() => {
-    if (!res) return null;
-    const b = res.bounds;
-    const P = [
-      enuOffset(b.minLng, b.maxLat, cLng, cLat), // TL
-      enuOffset(b.maxLng, b.maxLat, cLng, cLat), // TR
-      enuOffset(b.maxLng, b.minLat, cLng, cLat), // BR
-      enuOffset(b.minLng, b.minLat, cLng, cLat), // BL
-    ];
-    const z = 1;
-    const v = (i: number) => [P[i][0], P[i][1], z];
-    const verts = new Float32Array([...v(0), ...v(3), ...v(2), ...v(0), ...v(2), ...v(1)]);
-    const uv = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1]);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-    g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
-    return g;
-  }, [res, cLat, cLng]);
-
-  if (!res || !tex || !geom) return null;
+  if (!res) return null;
   return (
     <group>
-      <mesh geometry={geom} renderOrder={20}>
-        <meshBasicMaterial map={tex} transparent depthTest={false} depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
+      <VigorCells res={res} cLat={cLat} cLng={cLng} />
       {res.points.map((p, i) => {
         const [e, n] = enuOffset(p.lng, p.lat, cLng, cLat);
         return (
-          <Html key={i} position={[e, n, 5]} center distanceFactor={90}>
+          <Html key={i} position={[e, n, 6]} center distanceFactor={90}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ width: 20, height: 20, borderRadius: 9999, background: p.color, border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,.5)" }} />
               <div style={{ marginTop: 1, font: "600 11px system-ui", color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,.9)" }}>{p.score}</div>
@@ -240,6 +210,36 @@ function VigorOverlay({ field, cLat, cLng }: { field: Field; cLat: number; cLng:
         );
       })}
     </group>
+  );
+}
+
+/** The discrete vigor mosaic: one small raised colored tile per cell, with a
+    gap so the ground shows between — the drone-vigor look. */
+function VigorCells({ res, cLat, cLng }: { res: VigorResult; cLat: number; cLng: number }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const size = res.cellMeters * 0.74;
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const o = new THREE.Object3D();
+    const col = new THREE.Color();
+    res.cells.forEach((c, i) => {
+      const [e, n] = enuOffset(c.lng, c.lat, cLng, cLat);
+      o.position.set(e, n, 1); // flat tile, drawn on top of terrain
+      o.scale.set(size, size, 1);
+      o.updateMatrix();
+      mesh.setMatrixAt(i, o.matrix);
+      mesh.setColorAt(i, col.set(c.color));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [res, cLat, cLng, size]);
+
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, res.cells.length]} renderOrder={20}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial toneMapped={false} depthTest={false} depthWrite={false} side={THREE.DoubleSide} />
+    </instancedMesh>
   );
 }
 

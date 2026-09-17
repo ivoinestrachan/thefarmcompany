@@ -6,10 +6,13 @@ import type { Field } from "@/components/os/types";
    browser (uses canvas). Shared by the 2D map and the 3D view. */
 
 export type VigorPoint = { lng: number; lat: number; score: number; color: string };
+export type VigorCell = { lng: number; lat: number; t: number; color: string };
 export type VigorResult = {
   url: string;
   coordinates: [[number, number], [number, number], [number, number], [number, number]];
   points: VigorPoint[];
+  cells: VigorCell[];
+  cellMeters: number;
   bounds: { minLng: number; minLat: number; maxLng: number; maxLat: number };
 };
 
@@ -120,10 +123,33 @@ export async function computeVigor(fields: Field[]): Promise<VigorResult> {
     };
   });
 
+  // Coarse cell grid → a discrete mosaic (like drone vigor tiles) for 3D.
+  const GRID = 70;
+  const cstep = S / GRID;
+  const midLat = (minLat + maxLat) / 2;
+  const widthM = (maxLng - minLng) * 111320 * Math.cos((midLat * Math.PI) / 180);
+  const cellMeters = widthM / GRID;
+  const cells: VigorCell[] = [];
+  for (let gy = cstep / 2; gy < S; gy += cstep)
+    for (let gx = cstep / 2; gx < S; gx += cstep) {
+      const i = Math.floor(gy) * S + Math.floor(gx);
+      if (maskData[i * 4 + 3] < 128 || Number.isNaN(vari[i])) continue;
+      const t = Math.max(0, Math.min(1, (vari[i] - lo) / span));
+      const [cr, cg, cb] = vigorColor(t);
+      cells.push({
+        lng: minLng + (gx / S) * (maxLng - minLng),
+        lat: maxLat - (gy / S) * (maxLat - minLat),
+        t,
+        color: `rgb(${cr | 0},${cg | 0},${cb | 0})`,
+      });
+    }
+
   return {
     url: out.toDataURL("image/png"),
     coordinates: [[minLng, maxLat], [maxLng, maxLat], [maxLng, minLat], [minLng, minLat]],
     points,
+    cells,
+    cellMeters,
     bounds: { minLng, minLat, maxLng, maxLat },
   };
 }
