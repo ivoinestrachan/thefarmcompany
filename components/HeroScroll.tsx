@@ -62,14 +62,23 @@ export default function HeroScroll() {
   const glow = useRef<HTMLDivElement>(null);
   const hint = useRef<HTMLDivElement>(null);
   const beatRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // the leader/arrow layer per beat — faded in by scroll velocity, out when idle
+  const arrowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const progressRef = useRef(0);
   const anchorsRef = useRef<Anchor[]>(
     Array.from({ length: 7 }, () => ({ x: 0.5, y: 0.5 }))
   );
-  // registered leader lines → the segment index each one points to
-  const linesRef = useRef<Record<string, { el: SVGLineElement; seg: number }>>({});
-  const register = (key: string, el: SVGLineElement, seg: number) => {
-    linesRef.current[key] = { el, seg };
+  // registered leader lines → the segment index each one points to.
+  // `prefix` holds the fixed label-side elbow points; the far end tracks the
+  // part, approached by a short horizontal stub (`approach`, in viewBox units).
+  const linesRef = useRef<Record<string, { el: SVGPolylineElement; seg: number; prefix: string; approach: number }>>({});
+  const register = (key: string, el: SVGPolylineElement, seg: number, prefix: string, approach: number) => {
+    linesRef.current[key] = { el, seg, prefix, approach };
+  };
+  // the ring node that pins the part at each leader's end (tracks the segment)
+  const dotsRef = useRef<Record<string, { el: HTMLElement; seg: number }>>({});
+  const registerDot = (key: string, el: HTMLElement, seg: number) => {
+    dotsRef.current[key] = { el, seg };
   };
 
   useEffect(() => {
@@ -85,6 +94,13 @@ export default function HeroScroll() {
       if (robotWrap.current)
         robotWrap.current.style.filter = g > 0.01 ? `blur(${(g * 3).toFixed(2)}px)` : "none";
       if (glow.current) glow.current.style.opacity = `${(0.35 + g * 0.4).toFixed(3)}`;
+
+      // leaders/arrows reveal with scroll motion and fade out when it settles
+      const arrowsO = Math.min(1, glowVal / 20);
+      for (const key in arrowRefs.current) {
+        const n = arrowRefs.current[key];
+        if (n) n.style.opacity = arrowsO.toFixed(3);
+      }
 
       const el = section.current;
       if (el) {
@@ -118,11 +134,20 @@ export default function HeroScroll() {
         // connect each leader line to its worm segment's live screen position
         const A = anchorsRef.current;
         for (const key in linesRef.current) {
-          const { el, seg } = linesRef.current[key];
+          const { el, seg, prefix, approach } = linesRef.current[key];
           const a = A[seg];
           if (a) {
-            el.setAttribute("x2", `${a.x * 100}`);
-            el.setAttribute("y2", `${a.y * 100}`);
+            const ax = a.x * 100;
+            const ay = a.y * 100;
+            el.setAttribute("points", `${prefix}${ax + approach},${ay} ${ax},${ay}`);
+          }
+        }
+        for (const key in dotsRef.current) {
+          const { el, seg } = dotsRef.current[key];
+          const a = A[seg];
+          if (a) {
+            el.style.left = `${a.x * 100}%`;
+            el.style.top = `${a.y * 100}%`;
           }
         }
       }
@@ -153,6 +178,9 @@ export default function HeroScroll() {
 
   const setBeat = (key: string) => (n: HTMLDivElement | null) => {
     beatRefs.current[key] = n;
+  };
+  const setArrows = (key: string) => (n: HTMLDivElement | null) => {
+    arrowRefs.current[key] = n;
   };
 
   return (
@@ -193,19 +221,19 @@ export default function HeroScroll() {
         </div>
 
         {/* BEAT · the bug */}
-        <Beat innerRef={setBeat("herd")} beatKey="herd" register={register} eyebrow="The Wiggler" title="One bug," accent="every job."
+        <Beat innerRef={setBeat("herd")} arrowsRef={setArrows("herd")} beatKey="herd" register={register} registerDot={registerDot} eyebrow="The Wiggler" title="One bug," accent="every job."
           left={["pulls weeds", "aerates soil"]}
           right={["reads plants", "zero chemicals", "8 ac / day"]}
         />
 
         {/* BEAT · inside */}
-        <Beat innerRef={setBeat("anatomy")} beatKey="anatomy" register={register} eyebrow="Anatomy · Wiggler W-04" title="Inside" accent="the Wiggler."
+        <Beat innerRef={setBeat("anatomy")} arrowsRef={setArrows("anatomy")} beatKey="anatomy" register={register} registerDot={registerDot} eyebrow="Anatomy · Wiggler W-04" title="Inside" accent="the Wiggler."
           left={["chassis spine", "peristaltic drive", "support insert"]}
           right={["vision sensor", "segment ring", "moisture probe"]}
         />
 
         {/* BEAT · the living-soil loop */}
-        <Beat innerRef={setBeat("loop")} beatKey="loop" register={register} eyebrow="Living-soil loop" title="Eats the weeds," accent="heals the soil."
+        <Beat innerRef={setBeat("loop")} arrowsRef={setArrows("loop")} beatKey="loop" register={register} registerDot={registerDot} eyebrow="Living-soil loop" title="Eats the weeds," accent="heals the soil."
           left={["pulls weeds", "adds microbes"]}
           right={["plant health", "soil telemetry", "rebuilds soil"]}
         />
@@ -224,8 +252,10 @@ export default function HeroScroll() {
 
 function Beat({
   innerRef,
+  arrowsRef,
   beatKey,
   register,
+  registerDot,
   eyebrow,
   title,
   accent,
@@ -233,8 +263,10 @@ function Beat({
   right,
 }: {
   innerRef: (n: HTMLDivElement | null) => void;
+  arrowsRef: (n: HTMLDivElement | null) => void;
   beatKey: string;
-  register: (key: string, el: SVGLineElement, seg: number) => void;
+  register: (key: string, el: SVGPolylineElement, seg: number, prefix: string, approach: number) => void;
+  registerDot: (key: string, el: HTMLElement, seg: number) => void;
   eyebrow: string;
   title: string;
   accent: string;
@@ -245,7 +277,7 @@ function Beat({
   // right → head-side segments (6,5,4), left → tail-side (0,1,2).
   const rCol = (i: number) => ({ x: 63, y: 30 + i * 11 });
   const lCol = (i: number) => ({ x: 37, y: 44 + i * 11 });
-  const stroke = "rgba(246,244,242,0.5)";
+  const stroke = "rgba(246,244,242,0.62)";
 
   return (
     <div ref={innerRef} className="pointer-events-none absolute inset-0 opacity-0" aria-hidden>
@@ -256,9 +288,9 @@ function Beat({
           {title} <span className="display-accent">{accent}</span>
         </h2>
         {/* phones: leader lines don't fit — list the callouts instead */}
-        <ul className="mt-7 grid grid-cols-2 gap-x-5 gap-y-2.5 md:hidden">
+        <ul className="mt-7 grid grid-cols-2 gap-x-5 gap-y-3 md:hidden">
           {[...left, ...right].map((l) => (
-            <li key={l} className="flex items-center gap-2 font-mono text-[12px] lowercase text-fog">
+            <li key={l} className="flex items-center gap-2 font-mono text-[13px] lowercase text-fog">
               <span className="h-1 w-1 shrink-0 rounded-full bg-signal" />
               {l}
             </li>
@@ -266,55 +298,80 @@ function Beat({
         </ul>
       </div>
 
-      {/* leader lines — far end tracks the live worm segment (desktop) */}
+      {/* arrow layer — revealed by scroll velocity (opacity set each frame in
+          the rAF loop), so leaders only appear while you're actually scrolling. */}
+      <div ref={arrowsRef} className="pointer-events-none absolute inset-0" style={{ opacity: 0 }}>
+      {/* leader lines — label stub → diagonal → short horizontal into the part,
+          whose end tracks the live worm segment each frame (desktop). */}
       <svg className="absolute inset-0 hidden h-full w-full md:block" viewBox="0 0 100 100" preserveAspectRatio="none">
         {right.map((l, i) => {
           const c = rCol(i);
+          const prefix = `${c.x},${c.y} ${c.x - 6},${c.y} `;
           return (
-            <line
+            <polyline
               key={l}
               ref={(el) => {
-                if (el) register(`${beatKey}-r-${i}`, el, 6 - i);
+                if (el) register(`${beatKey}-r-${i}`, el, 6 - i, prefix, 4);
               }}
-              x1={c.x}
-              y1={c.y}
-              x2={c.x}
-              y2={c.y}
+              points={`${prefix}${c.x - 6},${c.y}`}
+              fill="none"
               stroke={stroke}
-              strokeWidth="1"
+              strokeWidth="1.1"
               vectorEffect="non-scaling-stroke"
+              style={{ filter: "drop-shadow(0 0 2.5px rgba(0,0,0,0.95))" }}
             />
           );
         })}
         {left.map((l, i) => {
           const c = lCol(i);
+          const prefix = `${c.x},${c.y} ${c.x + 6},${c.y} `;
           return (
-            <line
+            <polyline
               key={l}
               ref={(el) => {
-                if (el) register(`${beatKey}-l-${i}`, el, i);
+                if (el) register(`${beatKey}-l-${i}`, el, i, prefix, -4);
               }}
-              x1={c.x}
-              y1={c.y}
-              x2={c.x}
-              y2={c.y}
+              points={`${prefix}${c.x + 6},${c.y}`}
+              fill="none"
               stroke={stroke}
-              strokeWidth="1"
+              strokeWidth="1.1"
               vectorEffect="non-scaling-stroke"
+              style={{ filter: "drop-shadow(0 0 2.5px rgba(0,0,0,0.95))" }}
             />
           );
         })}
       </svg>
 
-      {/* labels at the outer end of each leader */}
+      {/* ring nodes that pin each part — position tracks the segment (rAF) */}
+      {right.map((l, i) => (
+        <span
+          key={l}
+          ref={(el) => {
+            if (el) registerDot(`${beatKey}-r-${i}`, el, 6 - i);
+          }}
+          className="absolute hidden h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-signal/80 bg-char/40 md:block"
+        />
+      ))}
+      {left.map((l, i) => (
+        <span
+          key={l}
+          ref={(el) => {
+            if (el) registerDot(`${beatKey}-l-${i}`, el, i);
+          }}
+          className="absolute hidden h-[7px] w-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-signal/80 bg-char/40 md:block"
+        />
+      ))}
+
+      {/* labels at the outer end of each leader — dot sits on the line side */}
       {right.map((l, i) => {
         const c = rCol(i);
         return (
           <span
             key={l}
-            className="absolute hidden font-mono text-[11px] lowercase tracking-wide text-paper/90 md:block"
+            className="absolute hidden items-center gap-1.5 font-mono text-[13px] lowercase tracking-wide text-paper md:inline-flex"
             style={{ left: `${c.x + 1}%`, top: `${c.y}%`, transform: "translateY(-50%)" }}
           >
+            <span className="h-1 w-1 shrink-0 rounded-full bg-signal" />
             {l}
           </span>
         );
@@ -324,13 +381,15 @@ function Beat({
         return (
           <span
             key={l}
-            className="absolute hidden text-right font-mono text-[11px] lowercase tracking-wide text-paper/90 md:block"
+            className="absolute hidden items-center justify-end gap-1.5 text-right font-mono text-[13px] lowercase tracking-wide text-paper md:inline-flex"
             style={{ left: `${c.x - 1}%`, top: `${c.y}%`, transform: "translate(-100%, -50%)" }}
           >
             {l}
+            <span className="h-1 w-1 shrink-0 rounded-full bg-signal" />
           </span>
         );
       })}
+      </div>
     </div>
   );
 }
