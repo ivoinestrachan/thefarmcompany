@@ -1,60 +1,42 @@
 import Reveal from "./Reveal";
 
 /* -------------------------------------------------------------------------- */
-/*  OldWay — a light break in the dark site: a line-art figure spraying weeds  */
-/*  the chemical way, marked up by hand. The contrast to what the bugs do.     */
+/*  OldWay — the status quo, at scale. A full-bleed photograph of commercial    */
+/*  spraying equipment working a field, with the headline over it. The contrast */
+/*  the Wiggler is built against. Photo: Wikimedia Commons (CC BY-SA).           */
 /* -------------------------------------------------------------------------- */
 
 export default function OldWay() {
   return (
-    <section className="border-y hairline bg-[#f2efe8] py-24 text-[#26241f] lg:py-32">
-      <div className="mx-auto grid w-full max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1fr_1.05fr] lg:gap-16 lg:px-10">
+    <section className="relative flex min-h-[620px] items-end overflow-hidden border-y hairline lg:min-h-[760px]">
+      {/* full-bleed industrial spraying photo */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/oldway/sprayer.jpg"
+        alt="A self-propelled commercial boom sprayer applying chemicals across a large field"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      {/* darken for legibility */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-char via-char/70 to-char/20" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-char/80 to-transparent" />
+
+      <div className="relative mx-auto w-full max-w-7xl px-6 pb-16 lg:px-10 lg:pb-24">
         <Reveal>
-          <span className="text-[1.25rem] font-500 text-[#26241f]">
-            The old way
-          </span>
-          <h2 className="display mt-5 text-3xl leading-[0.98] sm:text-5xl lg:text-6xl">
-            Stop spraying your{" "}
-            <span className="text-black">soil to death.</span>
+          <span className="eyebrow">The old way</span>
+          <h2 className="display mt-5 max-w-3xl text-paper text-4xl leading-[0.98] sm:text-5xl lg:text-7xl">
+            Stop spraying your <span className="display-accent">soil to death.</span>
           </h2>
-          <p className="mt-6 max-w-lg text-lg font-300 leading-relaxed text-[#57534a]">
-            The sprays farms use don&rsquo;t only kill weeds. They also kill the
-            tiny fungi and microbes that keep soil healthy, so every season the
-            land needs more chemicals just to grow the same crop. Our bugs pull the
-            weeds out by hand instead. No chemicals, and the soil stays alive.
+          <p className="mt-6 max-w-xl text-lg font-300 leading-relaxed text-paper/75">
+            Conventional weed control can mean repeated blanket applications across
+            thousands of acres. Wiggler&rsquo;s proposition is simpler: find the
+            unwanted plant, act mechanically, and leave the rest of the row alone.
+          </p>
+          <p className="mt-8 font-mono text-[12px] uppercase tracking-wide text-paper/50">
+            Commercial spraying · the operating model Wiggler is designed to change
           </p>
         </Reveal>
-
-        <Reveal delay={120}>
-          <div className="relative mx-auto w-full max-w-sm">
-            {/* photo — background removed, so the man sits straight on the panel. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/old-way.webp"
-              alt="A man spraying chemical weedkiller onto a patch of dead grass"
-              className="w-full"
-            />
-
-            {/* hand-drawn call-out pointing at the spray */}
-            <div className="pointer-events-none absolute left-[0%] top-[38%] -rotate-6">
-              <span className="hand text-2xl font-700 leading-tight text-[#2b2925] sm:text-[1.75rem]">
-                no more
-                <br />
-                of this
-              </span>
-            </div>
-            <svg
-              className="pointer-events-none absolute left-[5%] top-[50%] h-[32%] w-[34%] text-[#2b2925]"
-              viewBox="0 0 100 100"
-              fill="none"
-              aria-hidden
-            >
-              <path d="M10 8 C 52 4 82 40 66 80" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
-              <path d="M52 72 L67 84 L78 69" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-        </Reveal>
       </div>
+
     </section>
   );
 }

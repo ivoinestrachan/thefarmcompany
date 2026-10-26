@@ -15,10 +15,17 @@ export default function Reveal({
 }) {
   const ref = useRef<HTMLElement | null>(null);
   const [shown, setShown] = useState(false);
+  // honour the OS "reduce motion" setting — no slide/fade, just show the content
+  const [reduce, setReduce] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setReduce(true);
+      setShown(true);
+      return;
+    }
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -32,14 +39,18 @@ export default function Reveal({
     return () => io.disconnect();
   }, []);
 
+  const className_ = reduce
+    ? className
+    : `${className} transition-all duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        shown ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
+      }`;
+
   return createElement(
     Tag,
     {
       ref,
-      className: `${className} transition-all duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-        shown ? "translate-y-0 opacity-100" : "translate-y-12 opacity-0"
-      }`,
-      style: { transitionDelay: `${delay}ms` },
+      className: className_,
+      style: reduce ? undefined : { transitionDelay: `${delay}ms` },
     },
     children
   );

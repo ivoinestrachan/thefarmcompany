@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Caveat } from "next/font/google";
+import { Hanken_Grotesk, Space_Mono, Caveat } from "next/font/google";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
 import "./globals.css";
 
@@ -11,19 +11,20 @@ const caveat = Caveat({
   variable: "--font-hand",
 });
 
-// Geist — a clean, neutral grotesque (closest free match to Anduril's
-// Helvetica Now Display) for display + body.
-const grotesk = Geist({
+// Hanken Grotesk — an elegant, open grotesque used light. Refined and airy
+// (à la Thalamic Labs) rather than heavy/industrial or default-geometric.
+const grotesk = Hanken_Grotesk({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
   variable: "--font-grotesk",
 });
 
-// Geist Mono for the instrument layer — labels, telemetry, coordinates.
-const spaceMono = Geist_Mono({
+// Space Mono — the instrument/telemetry layer: labels, data, coordinates. Has
+// character (ribboned terminals) where Geist Mono reads default.
+const spaceMono = Space_Mono({
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "700"],
   display: "swap",
   variable: "--font-space-mono",
 });

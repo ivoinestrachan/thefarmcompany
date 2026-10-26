@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 /* Anduril's typeface — Helvetica Now Display (licensed). Add the upright
    weights (Regular/Bold/Black) here to switch the whole site to it. */
@@ -54,14 +55,13 @@
   --color-bone: #f5f4f0;
   --color-mist: #e9e7e0;
 
-  /* System Helvetica (upright) for now — near-identical to Anduril's Helvetica
-     Now Display. Re-add "Helvetica Now Display" to the front of these stacks
-     once the UPRIGHT weights (Regular/Bold/Black) are @font-face'd; only the
-     italic file is loaded today, so keeping it here would slant the whole site. */
-  --font-display: Helvetica, "Helvetica Neue", var(--font-grotesk), Arial,
-    ui-sans-serif, sans-serif;
-  --font-sans: Helvetica, "Helvetica Neue", var(--font-grotesk), Arial,
-    ui-sans-serif, sans-serif;
+  /* Archivo (loaded in layout.tsx as --font-grotesk) leads both stacks so the
+     real typeface renders — the old Helvetica-first stack meant the browser
+     never reached the webfont and the whole site fell back to system sans. */
+  --font-display: var(--font-grotesk), "Helvetica Neue", Arial, ui-sans-serif,
+    sans-serif;
+  --font-sans: var(--font-grotesk), "Helvetica Neue", Arial, ui-sans-serif,
+    sans-serif;
   --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo,
     Consolas, monospace;
 }
@@ -96,6 +96,61 @@ button:not(:disabled),
   cursor: pointer;
 }
 
+.operations-marker {
+  position: relative;
+  display: grid;
+  height: 2.35rem;
+  width: 2.35rem;
+  place-items: center;
+  border: 1px solid rgba(243, 241, 237, 0.65);
+  border-radius: 999px;
+  background: rgba(13, 11, 10, 0.86);
+  color: rgba(243, 241, 237, 0.9);
+  box-shadow: 0 0 0 0 rgba(243, 241, 237, 0.18);
+  backdrop-filter: blur(8px);
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+.operations-map-canvas {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+.operations-marker > span {
+  position: absolute;
+  inset: -0.45rem;
+  border: 1px solid rgba(243, 241, 237, 0.18);
+  border-radius: 999px;
+}
+.operations-marker > b {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+.operations-marker:hover,
+.operations-marker[data-active] {
+  transform: scale(1.08);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 0 0 0 0.6rem rgba(243, 241, 237, 0.08);
+}
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid rgba(243, 241, 237, 0.18) !important;
+  border-radius: 0 !important;
+  background: rgba(13, 11, 10, 0.82) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(8px);
+}
+.maplibregl-ctrl-group button {
+  border-color: rgba(243, 241, 237, 0.12) !important;
+}
+.maplibregl-ctrl-icon {
+  filter: invert(1);
+  opacity: 0.72;
+}
+
 /* Lenis smooth scroll */
 html.lenis,
 html.lenis body {
@@ -117,15 +172,16 @@ html.lenis body {
 
 .display {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 300; /* light + elegant, airy — refined, not heavy/industrial */
   letter-spacing: -0.02em;
-  line-height: 0.98;
+  line-height: 1;
   text-wrap: balance; /* even, deliberate line breaks on multi-line headings */
 }
 
-/* The one word we let go green. */
+/* Two-tone headline — the accent phrase drops to a muted grey (Thalamic-style
+   "Computation, / rebuilt." contrast), rather than a colour pop. */
 .display-accent {
-  color: var(--color-signal);
+  color: var(--color-fog);
   font-style: normal;
 }
 

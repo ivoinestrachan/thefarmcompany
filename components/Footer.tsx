@@ -14,7 +14,7 @@ export default function Footer() {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="https://images.unsplash.com/photo-1560493676-04071c5f467b?auto=format&fit=crop&w=2400&q=80"
+        src="/hydroponics/greenhouse.jpg"
         alt=""
         aria-hidden
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -24,13 +24,13 @@ export default function Footer() {
       <div className="grid-dot pointer-events-none absolute inset-0 opacity-25" />
       <div className="relative mx-auto w-full max-w-4xl px-6 text-center lg:px-10">
         <Reveal>
-          <span className="eyebrow justify-center">Onboarding · 2026 season</span>
+          <span className="eyebrow justify-center">Trial partners</span>
           <h2 className="display mt-6 text-4xl text-paper sm:text-5xl lg:text-6xl">
-            Put the bugs to work on your land.
+            Help take Wiggler from water to field.
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg font-300 leading-relaxed text-fog">
-            We are onboarding regenerative farms for the 2026 season. Tell us
-            about your acreage and we will map your first field.
+            We&rsquo;re looking for hydroponic operators, growers, and research
+            partners who want to help shape the next round of controlled trials.
           </p>
           <WaitlistForm />
         </Reveal>

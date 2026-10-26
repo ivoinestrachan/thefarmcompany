@@ -1,9 +1,11 @@
 import Navbar from "@/components/Navbar";
 import SmoothScroll from "@/components/SmoothScroll";
-import Intro from "@/components/Intro";
-import HeroScroll from "@/components/HeroScroll";
+import FarmSimulation from "@/components/FarmSimulation";
 import OldWay from "@/components/OldWay";
-import Reach from "@/components/Reach";
+import ScaleStats from "@/components/ScaleStats";
+import WhyWiggler from "@/components/WhyWiggler";
+import HydroTesting from "@/components/HydroTesting";
+import OperationsMap from "@/components/OperationsMap";
 import Backers from "@/components/Backers";
 import Footer from "@/components/Footer";
 import FooterBar from "@/components/FooterBar";
@@ -13,11 +15,13 @@ export default function Home() {
     <main>
       <SmoothScroll />
       <Navbar />
-      <Intro />
-      <HeroScroll />
+      <FarmSimulation />
+      <ScaleStats />
       <OldWay />
-      <Reach />
       <Backers />
+      <WhyWiggler />
+      <HydroTesting />
+      <OperationsMap />
       <Footer />
       <FooterBar />
     </main>

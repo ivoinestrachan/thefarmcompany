@@ -8,7 +8,10 @@ import { useEffect, useState } from "react";
 /*  overlay on small screens.                                                   */
 /* -------------------------------------------------------------------------- */
 
-const LINKS: { label: string; href: string }[] = [];
+const LINKS: { label: string; href: string }[] = [
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Why Wiggler", href: "#approach" },
+];
 
 const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
   {
