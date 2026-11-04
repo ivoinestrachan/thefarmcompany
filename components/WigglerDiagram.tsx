@@ -162,7 +162,7 @@ export default function WigglerDiagram({ className = "" }: { className?: string 
         peristaltic drive — the body contracts in a travelling wave and crawls the row like an earthworm.
       </text>
       <text x="500" y="568" textAnchor="middle" fill="rgba(243,241,237,0.38)" fontFamily="var(--font-mono), monospace" fontSize="13.5" letterSpacing="0.3">
-        no wheels, no soil compaction · pulls weeds mechanically · zero chemicals
+        no wheels, no soil compaction · pulls weeds mechanically · zero herbicides
       </text>
     </svg>
   );

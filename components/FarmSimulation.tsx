@@ -19,7 +19,7 @@ const PHASES = [
     label: "Build a plant-level map",
     body: "On-board vision reconstructs each row and gives every crop and weed a position in the field.",
     signal: "STEP 1 · MAP THE FIELD",
-    facts: ["Coverage · mixed-crop block", "Output · plant coordinates", "Chemicals · none"],
+    facts: ["Coverage · mixed-crop block", "Output · plant coordinates", "Herbicides · none"],
   },
   {
     k: "02",

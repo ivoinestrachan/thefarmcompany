@@ -9,7 +9,7 @@ const REASONS = [
   },
   {
     number: "02",
-    title: "Mechanical, not chemical.",
+    title: "Mechanical, not herbicide-based.",
     body: "Removal is physical. That creates a route away from repeated blanket herbicide applications and their recurring input cost.",
     note: "No blanket spray",
   },

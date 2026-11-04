@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 const SPECS: { heading: string; items: string[] }[] = [
   {
     heading: "What it does",
-    items: ["Pulls weeds mechanically", "Aerates the soil", "Reads every plant", "Zero chemicals", "8 acres / day"],
+    items: ["Pulls weeds mechanically", "Aerates the soil", "Reads every plant", "Zero herbicides", "8 acres / day"],
   },
   {
     heading: "Anatomy",

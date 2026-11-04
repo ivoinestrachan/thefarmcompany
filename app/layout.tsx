@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     "agricultural robotics",
     "regenerative agriculture",
     "soil health",
-    "weeding without chemicals",
+    "weeding without herbicides",
     "the Wiggler",
   ],
   authors: [{ name: "Ivoine Strachan" }],

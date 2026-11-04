@@ -4,7 +4,7 @@ import { SoilProfile } from "./diagrams";
 const PROBLEMS = [
   {
     n: "01",
-    title: "Chemical weed control kills the soil biome",
+    title: "Broad-spectrum herbicides can harm the soil biome",
     body: "Broad-spectrum herbicides do not stop at weeds. They break down the fungal and microbial networks that keep soil fertile, so fields need more inputs every year just to hold their yield.",
   },
   {

@@ -6,7 +6,7 @@ import WigglerDiagram from "./WigglerDiagram";
 /*  static concept schematic: headline + diagram + a plain capability strip.    */
 /* -------------------------------------------------------------------------- */
 
-const DOES = ["pulls weeds", "aerates soil", "reads plants", "zero chemicals", "8 ac / day"];
+const DOES = ["pulls weeds", "aerates soil", "reads plants", "zero herbicides", "8 ac / day"];
 
 export default function WigglerSection() {
   return (

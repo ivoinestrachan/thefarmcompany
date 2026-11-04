@@ -10,7 +10,7 @@ const AREAS: { title: string; href: string }[] = [
   { title: "Living Soil", href: "#soil" },
   { title: "Per-Plant Sensing", href: "#herd" },
   { title: "Live Field Map", href: "#dashboard" },
-  { title: "Zero Chemicals", href: "#problem" },
+  { title: "Zero Herbicides", href: "#problem" },
   { title: "Carbon in the Ground", href: "#soil" },
 ];
 
@@ -24,7 +24,7 @@ export default function Capabilities() {
             Working the ground beneath every harvest.
           </h2>
           <p className="mt-6 max-w-sm font-mono text-[13px] leading-relaxed text-fog">
-            Six systems, one job: take chemicals out of the field and put life
+            Six systems, one job: take herbicides out of the field and put life
             back into the soil.
           </p>
         </Reveal>

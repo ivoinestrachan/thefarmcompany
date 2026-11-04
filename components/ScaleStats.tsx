@@ -1,16 +1,16 @@
 import Reveal from "./Reveal";
 
 /* -------------------------------------------------------------------------- */
-/*  ScaleStats — the problem, in big honest numbers. Macro industry figures     */
-/*  (not company claims) that frame why a chemical-free alternative matters at   */
+/*  ScaleStats — the herbicide problem, in big honest numbers. Independent data  */
+/*  (not company claims) that frame why a mechanical alternative matters at      */
 /*  commercial scale. Oversized bold numerals against the light display type.    */
 /* -------------------------------------------------------------------------- */
 
 const STATS: { n: string; l: string }[] = [
-  { n: "$80B+", l: "spent on crop-protection chemicals worldwide, every year" },
-  { n: "5.6B lb", l: "pesticides applied across the world’s fields, annually" },
-  { n: "500+", l: "weed species that have already evolved chemical resistance" },
-  { n: "0", l: "chemicals the Wiggler puts into the ground" },
+  { n: "21 / 31", l: "known herbicide sites of action now have resistant weeds" },
+  { n: "2.03M t", l: "herbicide active ingredients used in agriculture worldwide in 2024" },
+  { n: "550", l: "unique cases of herbicide-resistant weeds reported globally" },
+  { n: "0", l: "herbicides the Wiggler puts into the ground" },
 ];
 
 export default function ScaleStats() {
@@ -20,7 +20,7 @@ export default function ScaleStats() {
         <Reveal>
           <span className="eyebrow">The problem · at scale</span>
           <h2 className="display mt-6 max-w-3xl text-paper text-3xl sm:text-5xl lg:text-6xl">
-            A chemical habit the land <span className="display-accent">can&rsquo;t afford.</span>
+            A herbicide cycle the land <span className="display-accent">can&rsquo;t afford.</span>
           </h2>
         </Reveal>
 
@@ -39,7 +39,7 @@ export default function ScaleStats() {
 
         <Reveal delay={60}>
           <p className="mt-12 font-mono text-[11px] text-faint">
-            Global industry estimates (FAO / sector reports), rounded. The Wiggler is pre-commercial.
+            Sources: FAOSTAT herbicides data (2024) and the International Herbicide-Resistant Weed Database (November 2026). The Wiggler is pre-commercial.
           </p>
         </Reveal>
       </div>

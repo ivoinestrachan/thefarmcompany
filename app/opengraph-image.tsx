@@ -25,7 +25,7 @@ export default function OpengraphImage() {
           the farming company
         </div>
         <div style={{ fontSize: 34, color: "#a6a099", marginTop: 28 }}>
-          Autonomous weeding robots. No chemicals. Living soil.
+          Autonomous weeding robots. No herbicides. Living soil.
         </div>
       </div>
     ),

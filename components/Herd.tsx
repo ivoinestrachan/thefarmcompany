@@ -14,11 +14,11 @@ const UNITS: Unit[] = [
     name: "Wiggler",
     role: "Weed removal",
     img: "https://images.unsplash.com/photo-1530267981375-f0de937f5f13?auto=format&fit=crop&w=1200&q=80",
-    body: "Our flagship soil bug. It identifies weeds by species with onboard cameras and removes them mechanically, cutting and uprooting them in place. No chemicals, and it never touches the crop or compacts a row.",
+    body: "Our flagship soil bug. It identifies weeds by species with onboard cameras and removes them mechanically, cutting and uprooting them in place. No herbicides, and it never touches the crop or compacts a row.",
     specs: [
       ["coverage", "8 acres / day"],
       ["method", "vision-guided cut"],
-      ["chemicals", "none"],
+      ["herbicides", "none"],
     ],
   },
   {
