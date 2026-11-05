@@ -25,13 +25,16 @@ export default function ScaleStats() {
         </Reveal>
 
         <Reveal delay={120}>
-          <div className="mt-16 grid grid-cols-1 gap-y-12 sm:grid-cols-2 sm:gap-x-10 lg:grid-cols-4">
+          <div className="mt-12 grid grid-cols-1 gap-y-0 sm:mt-16 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-12 lg:grid-cols-4">
             {STATS.map((s) => (
-              <div key={s.l} className="border-t border-edge pt-6">
-                <div className="text-6xl font-bold leading-[0.9] tracking-tight text-paper lg:text-[5.5rem]">
+              <div
+                key={s.l}
+                className="grid grid-cols-[8.25rem_minmax(0,1fr)] items-start gap-x-4 border-t border-edge py-6 sm:block sm:py-0 sm:pt-6"
+              >
+                <div className="whitespace-nowrap text-[clamp(2.25rem,10.5vw,2.75rem)] font-bold leading-[0.9] tracking-tight text-paper sm:text-6xl lg:text-[5.5rem]">
                   {s.n}
                 </div>
-                <p className="mt-5 max-w-[15rem] text-[14px] font-300 leading-relaxed text-fog">{s.l}</p>
+                <p className="max-w-[15rem] text-[13px] font-300 leading-relaxed text-fog sm:mt-5 sm:text-[14px]">{s.l}</p>
               </div>
             ))}
           </div>
